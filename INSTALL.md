@@ -20,6 +20,19 @@ To install the most recent ponyc:
 ponyup update ponyc release
 ```
 
+Selecting the correct distro:
+
+By default, when you use ponyup on a Glibc based Linux distro, it will install a version of ponyc that was built on the most recent Ubuntu LTS release. If your distro uses the same Glibc version, then everything will work fine.
+
+If you get an error like: `ponyc: /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.29' not found (required by ponyc)` then your version of Glibc is not compatible.
+
+You can use `ponyup show ponyc` to see all available distributions. Select the one that matches your distro using the `ponyup default` command. For example:
+
+```
+ponyup show ponyc
+
+
+If you are using a Glibc based Linux distro, then you might need to select an specific distribution package rather than
 Additional requirements:
 
 All ponyc Linux installations need to have a C compiler such as clang installed. Compilers other than clang might work, but clang is the officially supported C compiler. The following distributions have additional requirements:
