@@ -12,9 +12,9 @@ primitive Path
   Operations on paths that do not require a capability. The operations can be
   used to manipulate path names, but give no access to the resulting paths.
   """
-  fun is_sep(c: U8): Bool =>
+  fun is_sep(c: U32): Bool =>
     """
-    Determine if a byte is a path separator.
+    Determine if a character is a path separator.
     """
     ifdef windows then
       (c == '/') or (c == '\\')

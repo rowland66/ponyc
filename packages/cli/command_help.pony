@@ -61,11 +61,15 @@ class box CommandHelp
     """
     Renders the help message as a String.
     """
-    let w: Writer = Writer
-    _write_help(w)
-    let str = recover trn String(w.size()) end
-    for bytes in w.done().values() do str.append(bytes) end
-    str
+    try
+      let w: Writer = Writer
+      _write_help(w)
+      let str = recover trn String(w.size()) end
+      for bytes in w.done().values() do str.append(String.from_array(bytes)?) end
+      str
+    else
+      ""
+    end
 
   fun box print_help(os: OutStream) =>
     """

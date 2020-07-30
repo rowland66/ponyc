@@ -66,9 +66,11 @@ class _TestPing is UDPNotify
   =>
     _h.complete_action("ping receive")
 
-    let s = String .> append(consume data)
-    _h.assert_eq[String box](s, "pong!")
-    _h.complete(true)
+    try
+      let s = recover val String.from_iso_array(consume data)? end
+      _h.assert_eq[String box](s, "pong!")
+      _h.complete(true)
+    end
 
 class _TestPong is UDPNotify
   let _h: TestHelper
@@ -106,11 +108,13 @@ class _TestPong is UDPNotify
   =>
     _h.complete_action("pong receive")
 
-    let s = String .> append(consume data)
-    _h.assert_eq[String box](s, "ping!")
-    sock.writev(
-      recover val [[U8('p'); U8('o'); U8('n'); U8('g'); U8('!')]] end,
-      from)
+    try
+      let s = recover val String.from_iso_array(consume data)? end
+      _h.assert_eq[String box](s, "ping!")
+      sock.writev(
+        recover val [[U8('p'); U8('o'); U8('n'); U8('g'); U8('!')]] end,
+        from)
+    end
 
 class iso _TestBroadcast is UnitTest
   """
@@ -285,13 +289,15 @@ class _TestTCPExpectNotify is TCPConnectionNotify
     else
       _h.assert_eq[USize](_expect, data.size())
 
-      if _server then
-        _h.complete_action("server receive")
-        _h.assert_eq[String](String.from_array(data), "goodbye")
-      else
-        _h.complete_action("client receive")
-        _h.assert_eq[String](String.from_array(data), "hi there")
-        _send(conn, "goodbye")
+      try
+        if _server then
+          _h.complete_action("server receive")
+          _h.assert_eq[String](String.from_array(data)?, "goodbye")
+        else
+          _h.complete_action("client receive")
+          _h.assert_eq[String](String.from_array(data)?, "hi there")
+          _send(conn, "goodbye")
+        end
       end
 
       _frame = true
@@ -316,7 +322,7 @@ class _TestTCPExpectNotify is TCPConnectionNotify
     buf = recover Array[U8] end
     buf.push((len >> 8).u8())
     buf.push((len >> 0).u8())
-    buf.append(data)
+    buf.append(data.array())
     conn.write(consume buf)
 
 class _TestTCPExpectOverBufferSizeNotify is TCPConnectionNotify
@@ -369,7 +375,7 @@ class _TestTCPWritevNotifyClient is TCPConnectionNotify
 
   fun ref sentv(conn: TCPConnection ref, data: ByteSeqIter): ByteSeqIter =>
     recover
-      Array[ByteSeq] .> concat(data.values()) .> push(" (from client)")
+      Array[ByteSeq] .> concat(data.values()) .> push(" (from client)".array())
     end
 
   fun ref connected(conn: TCPConnection ref) =>
@@ -392,7 +398,9 @@ class _TestTCPWritevNotifyServer is TCPConnectionNotify
     times: USize)
     : Bool
   =>
-    _buffer.append(consume data)
+    try
+      _buffer.append(String.from_iso_array(consume data)?)
+    end
 
     let expected = "hello, hello (from client)"
 
@@ -649,8 +657,8 @@ class _TestTCPProxy is UnitTest
   fun exclusion_group(): String => "network"
 
   fun ref apply(h: TestHelper) =>
-    h.expect_action("sender connected") 
-    h.expect_action("sender proxy request") 
+    h.expect_action("sender connected")
+    h.expect_action("sender proxy request")
 
     _TestTCP(h)(_TestTCPProxyNotify(h),
       _TestTCPProxyNotify(h))
@@ -663,7 +671,7 @@ class _TestTCPProxyNotify is TCPConnectionNotify
   fun ref proxy_via(host: String, service: String): (String, String) =>
     _h.complete_action("sender proxy request")
     (host, service)
-    
+
   fun ref connected(conn: TCPConnection ref) =>
     _h.complete_action("sender connected")
 

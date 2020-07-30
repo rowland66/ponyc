@@ -301,9 +301,11 @@ class iso _TestExpect is UnitTest
           _expect
 
         fun ref stdout(process: ProcessMonitor ref, data: Array[U8] iso) =>
-          _h.assert_eq[USize](_expect, data.size())
-          process.expect(if _expect == 2 then 4 else 2 end)
-          _out.push(String.from_array(consume data))
+          try
+            _h.assert_eq[USize](_expect, data.size())
+            process.expect(if _expect == 2 then 4 else 2 end)
+            _out.push(String.from_array(consume data)?)
+          end
 
         fun ref dispose(process: ProcessMonitor ref, child_exit_status: ProcessExitStatus) =>
           match child_exit_status
@@ -585,9 +587,9 @@ class iso _TestLongRunningChild is UnitTest
           h.log("created")
 
         fun ref stdout(process: ProcessMonitor ref, data: Array[U8] iso) =>
-          h.log("[STDOUT] " + recover val String.from_iso_array(consume data) end)
+          try h.log("[STDOUT] " + recover val String.from_iso_array(consume data)? end) end
         fun ref stderr(process: ProcessMonitor ref, data: Array[U8] iso) =>
-          h.log("[STDERR] " + recover val String.from_iso_array(consume data) end)
+          try h.log("[STDERR] " + recover val String.from_iso_array(consume data)? end) end
 
         fun ref failed(process: ProcessMonitor ref, err: ProcessError) =>
           h.log(err.string())
@@ -631,9 +633,9 @@ class iso _TestKillLongRunningChild is UnitTest
           h.log("created")
 
         fun ref stdout(process: ProcessMonitor ref, data: Array[U8] iso) =>
-          h.log("[STDOUT] " + recover val String.from_iso_array(consume data) end)
+          try h.log("[STDOUT] " + recover val String.from_iso_array(consume data)? end) end
         fun ref stderr(process: ProcessMonitor ref, data: Array[U8] iso) =>
-          h.log("[STDERR] " + recover val String.from_iso_array(consume data) end)
+          try h.log("[STDERR] " + recover val String.from_iso_array(consume data)? end) end
 
         fun ref failed(process: ProcessMonitor ref, err: ProcessError) =>
           h.log(err.string())
@@ -726,8 +728,11 @@ class _ProcessClient is ProcessNotify
     """
     Called when new data is received on STDERR of the forked process
     """
-    _h.log("\tReceived from stderr: " + data.size().string() + " bytes")
-    _d_stderr.append(consume data)
+    try
+      _h.log("\tReceived from stderr: " + data.size().string() + " bytes")
+      let data_string = String.from_iso_array(consume data)?
+      _d_stderr.append(consume data_string)
+    end
 
   fun ref failed(process: ProcessMonitor ref, actual: ProcessError) =>
     """

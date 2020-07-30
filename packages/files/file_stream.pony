@@ -4,33 +4,36 @@ actor FileStream is OutStream
   printv and writev. The File will be disposed through File._final.
   """
   let _file: File
+  let _encoder: Encoder
 
-  new create(file: File iso) =>
+  new create(file: File iso, encoder: Encoder = UTF8Encoder) =>
     _file = consume file
+    _encoder = encoder
 
-  be print(data: ByteSeq) =>
+  be print(data: (String | ByteSeq)) =>
     """
     Print some bytes and insert a newline afterwards.
     """
-    _file.print(data)
+    _file.write(data, _encoder)
+    _file.write("\n", _encoder)
 
-  be write(data: ByteSeq) =>
+  be write(data: (String | ByteSeq)) =>
     """
     Print some bytes without inserting a newline afterwards.
     """
-    _file.write(data)
+    _file.write(data, _encoder)
 
-  be printv(data: ByteSeqIter) =>
+  be printv(data: (StringIter | ByteSeqIter)) =>
     """
     Print an iterable collection of ByteSeqs.
     """
-    _file.printv(data)
+    _file.printv(data, _encoder)
 
-  be writev(data: ByteSeqIter) =>
+  be writev(data: (StringIter | ByteSeqIter)) =>
     """
     Write an iterable collection of ByteSeqs.
     """
-    _file.writev(data)
+    _file.writev(data, _encoder)
 
   be flush() =>
     """

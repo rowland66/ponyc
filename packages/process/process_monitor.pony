@@ -240,38 +240,64 @@ actor ProcessMonitor
     _notifier.created(this)
 
 
-  be print(data: ByteSeq) =>
+  be print(data: (String | ByteSeq), encoder: Encoder = UTF8Encoder) =>
     """
     Print some bytes and append a newline.
     """
     if not _done_writing then
-      _write_final(data)
-      _write_final("\n")
+      match data
+      | let s: String =>
+        _write_final(s.array(encoder))
+        _write_final("\n".array(encoder))
+      | let bs: ByteSeq =>
+        _write_final(bs)
+        _write_final("\n".array(encoder))
+      end
     end
 
-  be write(data: ByteSeq) =>
+  be write(data: (String | ByteSeq), encoder: Encoder = UTF8Encoder) =>
     """
     Write to STDIN of the child process.
     """
     if not _done_writing then
-      _write_final(data)
+      match data
+      | let s: String =>
+        _write_final(s.array(encoder))
+      | let bs: ByteSeq =>
+        _write_final(bs)
+      end
     end
 
-  be printv(data: ByteSeqIter) =>
+  be printv(data: (StringIter | ByteSeqIter), encoder: Encoder = UTF8Encoder) =>
     """
     Print an iterable collection of ByteSeqs.
     """
-    for bytes in data.values() do
-      _write_final(bytes)
-      _write_final("\n")
+    match data
+    | let si: StringIter =>
+      for s in si.values() do
+        _write_final(s.array(encoder))
+        _write_final("\n".array(encoder))
+      end
+    | let bsi: ByteSeqIter =>
+      for bytes in bsi.values() do
+        _write_final(bytes)
+        _write_final("\n".array(encoder))
+      end
     end
 
-  be writev(data: ByteSeqIter) =>
+  be writev(data: (StringIter | ByteSeqIter), encoder: Encoder = UTF8Encoder) =>
     """
     Write an iterable collection of ByteSeqs.
     """
-    for bytes in data.values() do
-      _write_final(bytes)
+    match data
+    | let si: StringIter =>
+      for s in si.values() do
+        _write_final(s.array(encoder))
+      end
+    | let bsi: ByteSeqIter =>
+      for bytes in bsi.values() do
+        _write_final(bytes)
+      end
     end
 
   be done_writing() =>
