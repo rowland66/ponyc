@@ -249,7 +249,7 @@ class File
       recover Array[U8] end
     end
 
-    fun ref read_string(len: USize, decoder: Decoder = UTF8Decoder): String iso^ ? =>
+    fun ref read_string(len: USize, decoder: Decoder = UTF8Decoder): String iso^ =>
       """
       Returns up to len bytes. The resulting string may have internal null
       characters. The length parameter is the number of bytes to read, not the
@@ -269,7 +269,7 @@ class File
         | -1 => _errno = _get_error()
         end
 
-        let result = recover String.from_iso_array(consume bytes, decoder)? end
+        let result = recover String.from_iso_array(consume bytes, decoder) end
         result
       else
         recover String end

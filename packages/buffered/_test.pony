@@ -193,11 +193,11 @@ class iso _TestReader is UnitTest
     b.append([
       'f'; 'i'; 'e'; 'l'; 'd'; '1'; ';'
       'f'; 'i'; 'e'; 'l'; 'd'; '2'; ';'; ';'])
-    h.assert_eq[String](String.from_array(b.read_until(0)?)?, "str1")
-    h.assert_eq[String](String.from_array(b.read_until(';')?)?, "field1")
-    h.assert_eq[String](String.from_array(b.read_until(';')?)?, "field2")
+    h.assert_eq[String](String.from_array(b.read_until(0)?), "str1")
+    h.assert_eq[String](String.from_array(b.read_until(';')?), "field1")
+    h.assert_eq[String](String.from_array(b.read_until(';')?), "field2")
     // read an empty field
-    h.assert_eq[String](String.from_array(b.read_until(';')?)?, "")
+    h.assert_eq[String](String.from_array(b.read_until(';')?), "")
     // the last byte is consumed by the reader
     h.assert_eq[USize](b.size(), 0)
 

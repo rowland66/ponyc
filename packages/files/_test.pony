@@ -415,11 +415,11 @@ class iso _TestFileEOF is UnitTest
         file.sync()
         file.seek_start(0)
         let bytes1 = file.read(6)
-        let line1 = String.from_iso_array(consume bytes1)?
+        let line1 = String.from_iso_array(consume bytes1)
         h.assert_eq[String]("foobar", consume line1)
 
         let bytes2 = file.read(1)
-        let line2 = String.from_iso_array(consume bytes2)?
+        let line2 = String.from_iso_array(consume bytes2)
         h.assert_eq[USize](line2.size(), 0, "Read beyond EOF without error!")
         h.assert_true(file.errno() is FileEOF)
       end
@@ -689,7 +689,7 @@ class iso _TestFileLongLine is UnitTest
         file.sync()
         file.seek_start(0)
         let line1_bytes = file.read(longline.size())
-        let line1 = String.from_iso_array(consume line1_bytes)?
+        let line1 = String.from_iso_array(consume line1_bytes)
         h.assert_eq[String](longline, consume line1)
       end
       filepath.remove()
@@ -708,7 +708,7 @@ class iso _TestFileWrite is UnitTest
       end
       with file2 = CreateFile(filepath) as File do
         let bytes1 = file2.read(8)
-        let line1 = String.from_iso_array(consume bytes1)?
+        let line1 = String.from_iso_array(consume bytes1)
         h.assert_eq[String]("foobar\n", consume line1)
       end
       filepath.remove()
@@ -824,7 +824,7 @@ class iso _TestFileMixedWriteQueue is UnitTest
             line1
             line2
           ].values()),
-          String.from_iso_array(consume bytes2)?)
+          String.from_iso_array(consume bytes2))
       end
       filepath.remove()
     else
@@ -944,7 +944,6 @@ class iso _TestFileLinesSingleLine is UnitTest
 
   new iso create() =>
     var l: Array[String] = []
-    try
     l = [as String:
       "a"
       "a\n"
@@ -952,11 +951,8 @@ class iso _TestFileLinesSingleLine is UnitTest
       "abcd"
       "ABCD\n"
       "ABCD\r\n"
-      String.from_array(recover val Array[U8].init('a', 255) end)?
+      String.from_array(recover val Array[U8].init('a', 255) end)
     ]
-    else
-      l = []
-    end
     lines = l
     //try
 
@@ -1036,7 +1032,6 @@ class _TestFileLinesMultiLine is UnitTest
 
   new iso create() =>
     var f: Array[(Array[String] val, USize)] val = []
-    try
     f = [
       (["a"; "b"], 2)
       (["a"; ""; "b"], 3)
@@ -1046,17 +1041,14 @@ class _TestFileLinesMultiLine is UnitTest
       ([""; " "], 2)
       ([""; ""; ""], 2)
       ([
-        String.from_array(recover val Array[U8].init('a', 254) end)?
-        String.from_array(recover val Array[U8].init('a', 257) end)?], 2)
+        String.from_array(recover val Array[U8].init('a', 254) end)
+        String.from_array(recover val Array[U8].init('a', 257) end)], 2)
       ([
-        String.from_array(recover val Array[U8].init('b', 256) end)?
+        String.from_array(recover val Array[U8].init('b', 256) end)
         ""
-        String.from_array(recover val Array[U8].init('c', 256) end)?
+        String.from_array(recover val Array[U8].init('c', 256) end)
         ], 3)
     ]
-    else
-      f = []
-    end
     file_contents = f
 
   fun ref set_up(h: TestHelper) ? =>

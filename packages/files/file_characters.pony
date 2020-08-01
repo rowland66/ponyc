@@ -33,6 +33,9 @@ fun ref has_next(): Bool =>
   true
 
 fun ref next(): U32 ? =>
+  """
+  Returns the next character in the file.
+  """
   while true do
     try
       return _read()?
@@ -46,7 +49,7 @@ fun ref next(): U32 ? =>
   error
 
 fun ref _read(): U32 ? =>
-  (let char, let sz) = _reader.read_utf32(_decoder)?
+  (let char, let sz) = _reader.codepoint(_decoder)?
   // advance the cursor to the end of the returned line
   _inc_public_file_cursor(sz.usize())
   char

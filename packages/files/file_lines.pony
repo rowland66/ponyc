@@ -117,7 +117,7 @@ class FileLines is Iterator[String iso^]
   fun ref _read_last_line(): String iso^ ? =>
     let block = _reader.block(_reader.size())?
     _inc_public_file_cursor(block.size())
-    String.from_iso_array(consume block, _decoder)?
+    String.from_iso_array(consume block, _decoder)
 
   fun ref _inc_public_file_cursor(amount: USize) =>
     _cursor = _cursor + amount

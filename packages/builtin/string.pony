@@ -7,7 +7,7 @@ use @pony_os_errno[I32]()
 
 class val String is (Seq[U32] & Comparable[String box] & Stringable)
   """
-  A String is an ordered collection of characters.
+  A String is an ordered collection of unicode codepoints.
 
   Strings don't specify an encoding, and conversion of String to and from bytes always requires specifying
   an encoding or decoding.
@@ -60,43 +60,43 @@ actor Main
     _ptr = Pointer[U8]._alloc(_alloc)
     _set(0, 0)
 
-  new val from_array(data: Array[U8] val, decoder: Decoder = UTF8Decoder) ? =>
+  new val from_array(data: Array[U8] val, decoder: Decoder = UTF8Decoder) =>
     """
     Create a string from an array, reusing the underlying data pointer
     if the provided decoder matches the encoding used internally by the
     string (UTF-8). If the decoder does not match, a new byte array is
     allocated.
     """
-    if decoder is UTF8Encoder then
-      _validate_encoding(data)?
+    if decoder is UTF8Decoder then
+      _validate_encoding(data, decoder)
       _size = data.size()
       _alloc = data.space()
       _ptr = data.cpointer()._unsafe()
     else
-      let utf8_encoded_bytes = recover _recode_byte_array(data, decoder) ? end
+      let utf8_encoded_bytes = recover _recode_byte_array(data, decoder) end
       _size = utf8_encoded_bytes.size()
       _alloc = utf8_encoded_bytes.space()
       _ptr = utf8_encoded_bytes.cpointer()._unsafe()
     end
 
-  new iso from_iso_array(data: Array[U8] iso, decoder: Decoder = UTF8Decoder) ? =>
+  new iso from_iso_array(data: Array[U8] iso, decoder: Decoder = UTF8Decoder) =>
     """
     Create a string from an array, reusing the underlying data pointer
     if the provided decoder matches the encoding used internally by the
     string (UTF-8). If the decoder does not match, a new byte array is
     allocated.
     """
-    if decoder is UTF8Encoder then
+    if decoder is UTF8Decoder then
       _size = data.size()
       _alloc = data.space()
       let d2 = recover
         let d1: Array[U8] ref = consume data
-        _validate_encoding(d1)?
+        _validate_encoding(d1, decoder)
         d1
       end
       _ptr = (consume d2).cpointer()._unsafe()
     else
-      let utf8_encoded_bytes = recover _recode_byte_array(consume data, decoder)? end
+      let utf8_encoded_bytes = recover _recode_byte_array(consume data, decoder) end
       _size = utf8_encoded_bytes.size()
       _alloc = utf8_encoded_bytes.space()
       _ptr = utf8_encoded_bytes.cpointer()._unsafe()
@@ -104,8 +104,6 @@ actor Main
     if _alloc > _size then
       _set(_size, 0)
     end
-
-  //new from_seq(data: Seq[U8], decoder: Decoder = UTF8Decoder) =>
 
   new from_cpointer(str: Pointer[U8], len: USize, alloc: USize = 0) =>
     """
@@ -1958,21 +1956,21 @@ actor Main
     """
     _ptr._update(i, value)
 
-  fun tag _validate_encoding(data: Array[U8] box) ? =>
+  fun tag _validate_encoding(data: Array[U8] box, decoder: Decoder) =>
     let byte_consumer = {(codepoint: U32) => None} ref
-    _process_byte_array(data, UTF8Decoder, byte_consumer)?
+    _process_byte_array(data, decoder, byte_consumer)
 
-  fun tag _recode_byte_array(data: Array[U8] box, decoder: Decoder val): Array[U8] ? =>
+  fun tag _recode_byte_array(data: Array[U8] box, decoder: Decoder val): Array[U8] =>
       let utf8_encoded_bytes = Array[U8](data.size())
       let byte_consumer = {ref(codepoint: U32)(utf8_encoded_bytes) =>
         UTF8Encoder._add_encoded_bytes(utf8_encoded_bytes, UTF8Encoder.encode(codepoint))
       }
-      _process_byte_array(data, decoder, byte_consumer)?
+      _process_byte_array(data, decoder, byte_consumer)
       utf8_encoded_bytes
 
   fun tag _process_byte_array(data: Array[U8] box,
                               decoder: Decoder val,
-                              byte_consumer: {ref(U32)} ref) ? =>
+                              byte_consumer: {ref(U32)} ref) =>
     var bytes_loaded:U8 = 0
     var v_bytes:U32 = 0
     for b in data.values() do
@@ -1991,25 +1989,17 @@ actor Main
 
       if bytes_loaded == 4 then
         let decode_result = decoder.decode(v_bytes)
-        if decode_result._1 == 0xFFFD then
-          error
-        else
-          byte_consumer.apply(decode_result._1)
-          v_bytes = (v_bytes <<~ (decode_result._2 * 8).u32())
-          bytes_loaded = bytes_loaded - decode_result._2
-        end
+        byte_consumer.apply(decode_result._1)
+        v_bytes = (v_bytes <<~ (decode_result._2 * 8).u32())
+        bytes_loaded = bytes_loaded - decode_result._2
       end
     end
 
     while bytes_loaded > 0 do
       let decode_result = decoder.decode(v_bytes)
-      if decode_result._1 == 0xFFFD then
-        error
-      else
-        byte_consumer.apply(decode_result._1)
-        v_bytes = (v_bytes <<~ (decode_result._2 * 8).u32())
-        bytes_loaded = bytes_loaded - decode_result._2
-      end
+      byte_consumer.apply(decode_result._1)
+      v_bytes = (v_bytes <<~ (decode_result._2 * 8).u32())
+      bytes_loaded = bytes_loaded - decode_result._2
     end
 
 class StringRunes is Iterator[U32]

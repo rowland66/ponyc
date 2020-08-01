@@ -66,11 +66,9 @@ class _TestPing is UDPNotify
   =>
     _h.complete_action("ping receive")
 
-    try
-      let s = recover val String.from_iso_array(consume data)? end
-      _h.assert_eq[String box](s, "pong!")
-      _h.complete(true)
-    end
+    let s = recover val String.from_iso_array(consume data) end
+    _h.assert_eq[String box](s, "pong!")
+    _h.complete(true)
 
 class _TestPong is UDPNotify
   let _h: TestHelper
@@ -108,13 +106,11 @@ class _TestPong is UDPNotify
   =>
     _h.complete_action("pong receive")
 
-    try
-      let s = recover val String.from_iso_array(consume data)? end
-      _h.assert_eq[String box](s, "ping!")
-      sock.writev(
-        recover val [[U8('p'); U8('o'); U8('n'); U8('g'); U8('!')]] end,
-        from)
-    end
+    let s = recover val String.from_iso_array(consume data) end
+    _h.assert_eq[String box](s, "ping!")
+    sock.writev(
+      recover val [[U8('p'); U8('o'); U8('n'); U8('g'); U8('!')]] end,
+      from)
 
 class iso _TestBroadcast is UnitTest
   """
@@ -289,15 +285,13 @@ class _TestTCPExpectNotify is TCPConnectionNotify
     else
       _h.assert_eq[USize](_expect, data.size())
 
-      try
-        if _server then
-          _h.complete_action("server receive")
-          _h.assert_eq[String](String.from_array(data)?, "goodbye")
-        else
-          _h.complete_action("client receive")
-          _h.assert_eq[String](String.from_array(data)?, "hi there")
-          _send(conn, "goodbye")
-        end
+      if _server then
+        _h.complete_action("server receive")
+        _h.assert_eq[String](String.from_array(data), "goodbye")
+      else
+        _h.complete_action("client receive")
+        _h.assert_eq[String](String.from_array(data), "hi there")
+        _send(conn, "goodbye")
       end
 
       _frame = true
@@ -398,9 +392,7 @@ class _TestTCPWritevNotifyServer is TCPConnectionNotify
     times: USize)
     : Bool
   =>
-    try
-      _buffer.append(String.from_iso_array(consume data)?)
-    end
+    _buffer.append(String.from_iso_array(consume data))
 
     let expected = "hello, hello (from client)"
 

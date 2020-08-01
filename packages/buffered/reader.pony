@@ -161,9 +161,12 @@ class Reader
     u8()?
     b
 
-  fun ref read_utf32(decoder: Decoder = UTF8Decoder): (U32, U8) ? =>
+  fun ref codepoint(decoder: Decoder = UTF8Decoder): (U32, U8) ? =>
     """
-    Return a pair containing a unicode codepoint, and the number of bytes consumed to produce the codepoint.
+    Return a pair containing a unicode codepoint, and the number of bytes consumed to produce
+    the codepoint. Depending on how bytes are decoded into characters, the number of bytes consumed
+    may be greater than one. If the bytes cannot be converted to a codepoint, codepoint 0xFFFD
+    is returned, and 1 byte is consumed.
     """
     let decoder_bytes = DecoderBytes.create()
     while (decoder_bytes.bytes_loaded() < 4) do
@@ -172,9 +175,6 @@ class Reader
       else
         if decoder_bytes.bytes_loaded() > 0 then
           (let c, let sz) = decoder.decode(decoder_bytes.decode_bytes())
-          if c == 0xFFFD then
-            error
-          end
           block(sz.usize())? // We ignore the bytes returned, but this will mark the bytes decoded into a character as consumed
           return (c, sz)
         else
@@ -185,25 +185,23 @@ class Reader
 
     try
       (let c, let sz) = decoder.decode(decoder_bytes.decode_bytes())
-      if c == 0xFFFD then
-        error
-      end
       block(sz.usize())? // We ignore the bytes returned, but this will mark the bytes decoded into a character as consumed
       return (c, sz)
     end
     (0,0) // This should never happen
 
-  fun ref read_string(len: USize, decoder: Decoder = UTF8Decoder): (String iso^, USize) ? =>
+  fun ref string(len: USize, decoder: Decoder = UTF8Decoder): (String iso^, USize) ? =>
     """
     Return a pair containing a string of the specified length in characters, and the number of bytes consumed
     to produce the string. Depending on how bytes are decoded into characters, the number of bytes consumed
-    may be greater than the number of characters in the string.
+    may be greater than the number of characters in the string. Invalid byte sequences may result in 0xFFFD
+    codepoints appearing in the string.
     """
     var chars_read: USize = 0
     var bytes_read: USize = 0
     var result: String iso = recover String(len) end
     while (chars_read < len) do
-      (let c, let sz) = read_utf32(decoder)?
+      (let c, let sz) = codepoint(decoder)?
       result.push(c)
       chars_read = chars_read + 1
       bytes_read = bytes_read + sz.usize()
@@ -252,7 +250,7 @@ class Reader
       end
     outb.truncate(len - trunc_len)
 
-    var out = recover String.from_iso_array(consume outb)? end
+    var out = recover String.from_iso_array(consume outb) end
 
     (consume out, len)
 

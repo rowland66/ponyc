@@ -631,16 +631,15 @@ class iso _TestStringIsNullTerminated is UnitTest
     h.assert_true("0123456".trim(2, 4).clone().is_null_terminated())
     h.assert_false("0123456".trim(2, 4).is_null_terminated())
 
-    try
-      h.assert_true(
-        String.from_iso_array(recover
-          ['a'; 'b'; 'c']
-        end)?.is_null_terminated())
-      h.assert_false(
-        String.from_iso_array(recover
-          ['a'; 'b'; 'c'; 'd'; 'e'; 'f'; 'g'; 'h'] // power of two sized array
-        end)?.is_null_terminated())
-    end
+    h.assert_true(
+      String.from_iso_array(recover
+        ['a'; 'b'; 'c']
+      end).is_null_terminated())
+    h.assert_false(
+      String.from_iso_array(recover
+        ['a'; 'b'; 'c'; 'd'; 'e'; 'f'; 'g'; 'h'] // power of two sized array
+      end).is_null_terminated())
+
 class iso _TestSpecialValuesF32 is UnitTest
   """
   Test whether a F32 is infinite or NaN.
@@ -822,18 +821,17 @@ class iso _TestStringAdd is UnitTest
   fun name(): String => "builtin/String.add"
 
   fun apply(h: TestHelper) =>
-    try
-      let empty = String.from_array(recover Array[U8] end)?
-      h.assert_eq[String]("a" + "b", "ab")
-      h.assert_eq[String](empty + "a", "a")
-      h.assert_eq[String]("a" + empty, "a")
-      h.assert_eq[String](empty + empty, "")
-      h.assert_eq[String](empty + "", "")
-      h.assert_eq[String]("" + empty, "")
-      h.assert_eq[String]("a" + "abc".trim(1, 2), "ab")
-      h.assert_eq[String]("" + "abc".trim(1, 2), "b")
-      h.assert_eq[String]("a" + "".trim(1, 1), "a")
-    end
+    let empty = String.from_array(recover Array[U8] end)
+    h.assert_eq[String]("a" + "b", "ab")
+    h.assert_eq[String](empty + "a", "a")
+    h.assert_eq[String]("a" + empty, "a")
+    h.assert_eq[String](empty + empty, "")
+    h.assert_eq[String](empty + "", "")
+    h.assert_eq[String]("" + empty, "")
+    h.assert_eq[String]("a" + "abc".trim(1, 2), "ab")
+    h.assert_eq[String]("" + "abc".trim(1, 2), "b")
+    h.assert_eq[String]("a" + "".trim(1, 1), "a")
+
 class iso _TestStringJoin is UnitTest
   """
   Test String.join
@@ -1104,112 +1102,103 @@ class iso _TestStringFromArray is UnitTest
   fun name(): String => "builtin/String.from_array"
 
   fun apply(h: TestHelper) =>
-    try
-      let s_null = String.from_array(recover ['f'; 'o'; 'o'; 0] end)?
-      h.assert_eq[String](s_null, "foo\x00")
-      h.assert_eq[USize](s_null.size(), 4)
+    let s_null = String.from_array(recover ['f'; 'o'; 'o'; 0] end)
+    h.assert_eq[String](s_null, "foo\x00")
+    h.assert_eq[USize](s_null.size(), 4)
 
-      let s_no_null = String.from_array(recover ['f'; 'o'; 'o'] end)?
-      h.assert_eq[String](s_no_null, "foo")
-      h.assert_eq[USize](s_no_null.size(), 3)
-    end
+    let s_no_null = String.from_array(recover ['f'; 'o'; 'o'] end)
+    h.assert_eq[String](s_no_null, "foo")
+    h.assert_eq[USize](s_no_null.size(), 3)
 
 class iso _TestStringFromIsoArray is UnitTest
   fun name(): String => "builtin/String.from_iso_array"
 
   fun apply(h: TestHelper) =>
-    try
-      let s = recover val String.from_iso_array(recover ['f'; 'o'; 'o'] end)? end
-      h.assert_eq[String](s, "foo")
-      h.assert_eq[USize](s.size(), 3)
-      h.assert_true((s.space() == 3) xor s.is_null_terminated())
+    let s = recover val String.from_iso_array(recover ['f'; 'o'; 'o'] end) end
+    h.assert_eq[String](s, "foo")
+    h.assert_eq[USize](s.size(), 3)
+    h.assert_true((s.space() == 3) xor s.is_null_terminated())
 
-      let s2 =
-        recover val
-          String.from_iso_array(recover
-            ['1'; '1'; '1'; '1'; '1'; '1'; '1'; '1']
-          end)?
-        end
-      h.assert_eq[String](s2, "11111111")
-      h.assert_eq[USize](s2.size(), 8)
-      h.assert_true((s2.space() == 8) xor s2.is_null_terminated())
-    end
+    let s2 =
+      recover val
+        String.from_iso_array(recover
+          ['1'; '1'; '1'; '1'; '1'; '1'; '1'; '1']
+        end)
+      end
+    h.assert_eq[String](s2, "11111111")
+    h.assert_eq[USize](s2.size(), 8)
+    h.assert_true((s2.space() == 8) xor s2.is_null_terminated())
 
 class iso _TestStringSpace is UnitTest
   fun name(): String => "builtin/String.space"
 
   fun apply(h: TestHelper) =>
-    try
-      let s =
-        String.from_iso_array(recover
-          ['1'; '1'; '1'; '1'; '1'; '1'; '1'; '1']
-        end)?
+    let s =
+      String.from_iso_array(recover
+        ['1'; '1'; '1'; '1'; '1'; '1'; '1'; '1']
+      end)
 
-      h.assert_eq[USize](s.size(), 8)
-      h.assert_eq[USize](s.space(), 8)
-      h.assert_false(s.is_null_terminated())
-    end
+    h.assert_eq[USize](s.size(), 8)
+    h.assert_eq[USize](s.space(), 8)
+    h.assert_false(s.is_null_terminated())
 
 class iso _TestStringRecalc is UnitTest
   fun name(): String => "builtin/String.recalc"
 
   fun apply(h: TestHelper) =>
-    try
-      let s: String ref =
-        String.from_iso_array(recover
-          ['1'; '1'; '1'; '1'; '1'; '1'; '1'; '1']
-        end)?
-      s.recalc()
-      h.assert_eq[USize](s.size(), 8)
-      h.assert_eq[USize](s.space(), 8)
-      h.assert_false(s.is_null_terminated())
+    let s: String ref =
+      String.from_iso_array(recover
+        ['1'; '1'; '1'; '1'; '1'; '1'; '1'; '1']
+      end)
+    s.recalc()
+    h.assert_eq[USize](s.size(), 8)
+    h.assert_eq[USize](s.space(), 8)
+    h.assert_false(s.is_null_terminated())
 
-      let s2: String ref = "foobar".clone()
-      s2.recalc()
-      h.assert_eq[USize](s2.size(), 6)
-      h.assert_eq[USize](s2.space(), 6)
-      h.assert_true(s2.is_null_terminated())
+    let s2: String ref = "foobar".clone()
+    s2.recalc()
+    h.assert_eq[USize](s2.size(), 6)
+    h.assert_eq[USize](s2.space(), 6)
+    h.assert_true(s2.is_null_terminated())
 
-      let s3: String ref =
-        String.from_iso_array(recover ['1'; 0; 0; 0; 0; 0; 0; '1'] end)?
-      s3.truncate(1)
-      s3.recalc()
-      h.assert_eq[USize](1, s3.size())
-      h.assert_eq[USize](7, s3.space())
-      h.assert_true(s3.is_null_terminated())
-    end
+    let s3: String ref =
+      String.from_iso_array(recover ['1'; 0; 0; 0; 0; 0; 0; '1'] end)
+    s3.truncate(1)
+    s3.recalc()
+    h.assert_eq[USize](1, s3.size())
+    h.assert_eq[USize](7, s3.space())
+    h.assert_true(s3.is_null_terminated())
 
 class iso _TestStringTruncate is UnitTest
   fun name(): String => "builtin/String.truncate"
 
   fun apply(h: TestHelper) =>
-    try
-      let s =
-        recover ref
-          String.from_iso_array(recover
-            ['1'; '1'; '1'; '1'; '1'; '1'; '1'; '1']
-          end)?
-        end
+    let s =
+      recover ref
+        String.from_iso_array(recover
+          ['1'; '1'; '1'; '1'; '1'; '1'; '1'; '1']
+        end)
+      end
 
-      h.assert_false(s.is_null_terminated())
-      //s.truncate(s.space().isize())
-      //h.assert_true(s.is_null_terminated())
-      h.assert_eq[String](s.clone(), "11111111")
-      h.assert_eq[USize](s.size(), 8)
-      h.assert_eq[USize](s.space(), 15) // created extra allocation for null
-  /** Truncating a String to a larger size is no longer supported see Bug #1427
-      s.truncate(100)
-      h.assert_true(s.is_null_terminated())
-      h.assert_eq[USize](16, s.size()) // sized up to _alloc
-      h.assert_eq[USize](31, s.space()) // created extra allocation for null
+    h.assert_false(s.is_null_terminated())
+    //s.truncate(s.space().isize())
+    //h.assert_true(s.is_null_terminated())
+    h.assert_eq[String](s.clone(), "11111111")
+    h.assert_eq[USize](s.size(), 8)
+    h.assert_eq[USize](s.space(), 15) // created extra allocation for null
 
-      s.truncate(3)
-      h.assert_true(s.is_null_terminated())
-      h.assert_eq[String]("111", s.clone())
-      h.assert_eq[USize](3, s.size())
-      h.assert_eq[USize](31, s.space())
-  */
-    end
+/** Truncating a String to a larger size is no longer supported see Bug #1427
+    s.truncate(100)
+    h.assert_true(s.is_null_terminated())
+    h.assert_eq[USize](16, s.size()) // sized up to _alloc
+    h.assert_eq[USize](31, s.space()) // created extra allocation for null
+
+    s.truncate(3)
+    h.assert_true(s.is_null_terminated())
+    h.assert_eq[String]("111", s.clone())
+    h.assert_eq[USize](3, s.size())
+    h.assert_eq[USize](31, s.space())
+*/
 
 class iso _TestStringChop is UnitTest
   """

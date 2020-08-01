@@ -136,13 +136,11 @@ actor _TestStream is OutStream
   be flush() => None
 
   fun ref _collect(data: (String | ByteSeq)) =>
-    try
-      match data
-      | let s: String =>
-        _output.append(s)
-      | let bs: ByteSeq =>
-        _output.append(String.from_array(bs)?)
-      end
+    match data
+    | let s: String =>
+      _output.append(s)
+    | let bs: ByteSeq =>
+      _output.append(String.from_array(bs))
     end
 
   be logged() =>

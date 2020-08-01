@@ -28,21 +28,13 @@ primitive Base64
     """
     Encode for PEM (RFC 1421).
     """
-    try
-      String.from_iso_array(encode(data, '+', '/', '=', 64))?
-    else
-      recover String end
-    end
+    String.from_iso_array(encode(data, '+', '/', '=', 64))
 
   fun encode_mime(data: ReadSeq[U8]): String iso^ =>
     """
     Encode for MIME (RFC 2045).
     """
-    try
-      String.from_iso_array(encode(data, '+', '/', '=', 76))?
-    else
-      recover String end
-    end
+    String.from_iso_array(encode(data, '+', '/', '=', 76))
 
   fun encode_url[A: Seq[U8] iso = Array[U8] iso](
     data: ReadSeq[U8],

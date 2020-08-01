@@ -19,22 +19,22 @@ interface tag OutStream
 
   be print(data: (String | ByteSeq))
     """
-    Print some bytes and insert a newline afterwards.
+    Print a String or some bytes and insert a newline afterwards.
     """
 
   be write(data: (String | ByteSeq))
     """
-    Print some bytes without inserting a newline afterwards.
+    Print a String or some bytes without inserting a newline afterwards.
     """
 
   be printv(data: (StringIter | ByteSeqIter))
     """
-    Print an iterable collection of ByteSeqs or Strings using the default encoding (UTF-8).
+    Print an iterable collection of Strings or ByteSeqs using the default encoding (UTF-8).
     """
 
   be writev(data: (StringIter | ByteSeqIter))
     """
-    Write an iterable collection of ByteSeqs or Strings using the default encoding (UTF-8).
+    Write an iterable collection of Strings or ByteSeqs using the default encoding (UTF-8).
     """
 
   be flush()
@@ -129,5 +129,4 @@ actor StdStream is OutStream
     """
     Write the bytes and a newline without explicitly flushing.
     """
-    @pony_os_std_write[None](_stream, data.cpointer(), data.size())
-    @pony_os_std_write[None](_stream, "\n".cpointer(), "\n".byte_size())
+    @pony_os_std_print[None](_stream, data.cpointer(), data.size())
