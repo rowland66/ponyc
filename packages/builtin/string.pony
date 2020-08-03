@@ -1188,6 +1188,17 @@ actor Main
       end
     end
 
+  fun ref concat_bytes(iter: Iterator[U8], decoder: Decoder = UTF8Decoder) =>
+    """
+    Add all iterated bytes to the end of the string converting bytes to codepoints
+    using the provided Decoder.
+    """
+      _process_byte_array(iter,
+                          decoder,
+                          {ref(codepoint: U32)(str = this) =>
+                            str.push(codepoint)
+                          })
+
   fun ref clear() =>
     """
     Truncate the string to zero length.
@@ -1220,24 +1231,12 @@ actor Main
     _size = _size + that._size
     _set(_size, 0)
 
-  fun ref insert_char(offset: ISize, value: U32) =>
+  fun ref insert_utf32(offset: ISize, value: U32) =>
     """
     Inserts a character at the given offset. The value must contain
     the UTF-8 encoded bytes of the character. Appends if the offset
     is out of bounds.
     """
-    /**
-    var v = value
-    if value < 0x1000000 then
-      v = v << 8
-      if value < 0x10000 then
-        v = v << 8
-        if value < 0x100 then
-          v = v << 8
-        end
-      end
-    end
-    */
 
     insert_in_place(offset, String.from_utf32(value))
 
@@ -1958,48 +1957,34 @@ actor Main
 
   fun tag _validate_encoding(data: Array[U8] box, decoder: Decoder) =>
     let byte_consumer = {(codepoint: U32) => None} ref
-    _process_byte_array(data, decoder, byte_consumer)
+    _process_byte_array(data.values(), decoder, byte_consumer)
 
   fun tag _recode_byte_array(data: Array[U8] box, decoder: Decoder val): Array[U8] =>
       let utf8_encoded_bytes = Array[U8](data.size())
       let byte_consumer = {ref(codepoint: U32)(utf8_encoded_bytes) =>
         UTF8Encoder._add_encoded_bytes(utf8_encoded_bytes, UTF8Encoder.encode(codepoint))
       }
-      _process_byte_array(data, decoder, byte_consumer)
+      _process_byte_array(data.values(), decoder, byte_consumer)
       utf8_encoded_bytes
 
-  fun tag _process_byte_array(data: Array[U8] box,
+  fun tag _process_byte_array(data: Iterator[U8] ref,
                               decoder: Decoder val,
                               byte_consumer: {ref(U32)} ref) =>
-    var bytes_loaded:U8 = 0
-    var v_bytes:U32 = 0
-    for b in data.values() do
-      if bytes_loaded < 4 then
-        if bytes_loaded == 0 then
-          v_bytes = (v_bytes or (b.u32() << 24))
-        elseif bytes_loaded == 1 then
-          v_bytes = (v_bytes or (b.u32() << 16))
-        elseif bytes_loaded == 2 then
-          v_bytes = (v_bytes or (b.u32() << 8))
-        elseif bytes_loaded == 3 then
-          v_bytes = v_bytes or b.u32()
-        end
-        bytes_loaded = bytes_loaded + 1
-      end
+    let v_bytes = DecoderBytes.create()
+    for b in data do
+      v_bytes.pushByte(b)
 
-      if bytes_loaded == 4 then
-        let decode_result = decoder.decode(v_bytes)
+      if v_bytes.bytes_loaded() == 4 then
+        let decode_result = decoder.decode(v_bytes.decode_bytes())
         byte_consumer.apply(decode_result._1)
-        v_bytes = (v_bytes <<~ (decode_result._2 * 8).u32())
-        bytes_loaded = bytes_loaded - decode_result._2
+        v_bytes.process_bytes(decode_result._2)
       end
     end
 
-    while bytes_loaded > 0 do
-      let decode_result = decoder.decode(v_bytes)
+    while v_bytes.bytes_loaded() > 0 do
+      let decode_result = decoder.decode(v_bytes.decode_bytes())
       byte_consumer.apply(decode_result._1)
-      v_bytes = (v_bytes <<~ (decode_result._2 * 8).u32())
-      bytes_loaded = bytes_loaded - decode_result._2
+      v_bytes.process_bytes(decode_result._2)
     end
 
 class StringRunes is Iterator[U32]

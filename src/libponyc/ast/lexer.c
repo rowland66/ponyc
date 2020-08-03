@@ -924,20 +924,23 @@ static token_t* character(lexer_t* lexer)
         lex_error(lexer, "Empty character literal");
         t = make_token(lexer, TK_LEX_ERROR);
       }
-      else if (chars_consumed > 4) {
+      else if (chars_consumed > 4)
+      {
         lex_error(lexer, "Too many bytes in character literal");
-	t = make_token(lexer, TK_LEX_ERROR);
-      } 
-      else if (decode_state == UTF8_REJECT) {
+        t = make_token(lexer, TK_LEX_ERROR);
+      }
+      else if (decode_state == UTF8_REJECT)
+      {
         lex_error(lexer, "Invalid UTF-8 character encoding in character literal");
-	t = make_token(lexer, TK_LEX_ERROR);
+        t = make_token(lexer, TK_LEX_ERROR);
       }
       else
       {
         t = make_token(lexer, TK_INT);
-	if(value.low == 0) {
-	  value.low = codepoint;
-	}
+        if(value.low == 0)
+        {
+          value.low = codepoint;
+        }
         token_set_int(t, &value);
       }
       return t;
@@ -946,9 +949,13 @@ static token_t* character(lexer_t* lexer)
     if(c == '\\') {
       c = escape(lexer, true, false);
       if(c >= 0)
+      {
         value.low = c;
+      }
       chars_consumed = chars_consumed + 4;
-    } else {
+    }
+    else
+    {
       consume_chars(lexer, 1);
       chars_consumed++;
       if(codepoint == 0 || decode_state > 0)
@@ -958,7 +965,6 @@ static token_t* character(lexer_t* lexer)
     }
   }
 }
-
 
 /** Process an integral literal or integral part of a real.
  * No digits have yet been consumed.

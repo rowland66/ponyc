@@ -33,7 +33,7 @@ class Readline is ANSINotify
     """
     Create a readline handler to be passed to stdin. It begins blocked. Set an
     initial prompt on the ANSITerm to begin processing. Only encodings that are a
-    superset of ASCII (e.g. UTF-8, ISO-8859-1, ...) will work. 
+    superset of ASCII (e.g. UTF-8, ISO-8859-1, ...) will work.
     """
     _notify = consume notify
     _out = out
@@ -99,7 +99,7 @@ class Readline is ANSINotify
       _cur_bytes = _cur_bytes << (sz.u32() * 8)
       _cur_byte_count = _cur_byte_count - sz
 
-      _edit.insert_char(_cur_pos, codepoint)
+      _edit.insert_utf32(_cur_pos, codepoint)
       _cur_pos = _cur_pos + 1
       _refresh_line()
     end

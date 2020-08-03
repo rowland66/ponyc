@@ -75,7 +75,7 @@ primitive Path
     The result will have no trailing slash unless it is a root directory.
     If the result would be empty, "." will be returned instead.
     """
-    let s = recover String(path.size()) end
+    let s = recover String(path.byte_size()) end
     let vol = volume(path)
     s.append(vol)
 
