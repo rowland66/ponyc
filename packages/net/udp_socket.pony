@@ -149,7 +149,7 @@ actor UDPSocket
     _notify_listening()
     _start_next_read()
 
-  be write(data: (String | ByteSeq), to: NetAddress, encoder: Encoder = UTF8Encoder) =>
+  be write(data: (String | ByteSeq), to: NetAddress, encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Write a single sequence of bytes.
     """
@@ -160,7 +160,7 @@ actor UDPSocket
       _write(b, to)
     end
 
-  be writev(data: (StringIter | ByteSeqIter), to: NetAddress, encoder: Encoder = UTF8Encoder) =>
+  be writev(data: (StringIter | ByteSeqIter), to: NetAddress, encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Write a sequence of sequences of bytes.
     """

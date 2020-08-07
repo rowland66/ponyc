@@ -4,9 +4,9 @@ actor FileStream is OutStream
   printv and writev. The File will be disposed through File._final.
   """
   let _file: File
-  let _encoder: Encoder
+  let _encoder: StringEncoder
 
-  new create(file: File iso, encoder: Encoder = UTF8Encoder) =>
+  new create(file: File iso, encoder: StringEncoder = UTF8StringEncoder) =>
     _file = consume file
     _encoder = encoder
 

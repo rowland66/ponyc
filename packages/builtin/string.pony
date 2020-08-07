@@ -60,14 +60,14 @@ actor Main
     _ptr = Pointer[U8]._alloc(_alloc)
     _set(0, 0)
 
-  new val from_array(data: Array[U8] val, decoder: Decoder = UTF8Decoder) =>
+  new val from_array(data: Array[U8] val, decoder: StringDecoder = UTF8StringDecoder) =>
     """
     Create a string from an array, reusing the underlying data pointer
     if the provided decoder matches the encoding used internally by the
     string (UTF-8). If the decoder does not match, a new byte array is
     allocated.
     """
-    if decoder is UTF8Decoder then
+    if decoder is UTF8StringDecoder then
       _validate_encoding(data, decoder)
       _size = data.size()
       _alloc = data.space()
@@ -79,14 +79,14 @@ actor Main
       _ptr = utf8_encoded_bytes.cpointer()._unsafe()
     end
 
-  new iso from_iso_array(data: Array[U8] iso, decoder: Decoder = UTF8Decoder) =>
+  new iso from_iso_array(data: Array[U8] iso, decoder: StringDecoder = UTF8StringDecoder) =>
     """
     Create a string from an array, reusing the underlying data pointer
     if the provided decoder matches the encoding used internally by the
     string (UTF-8). If the decoder does not match, a new byte array is
     allocated.
     """
-    if decoder is UTF8Decoder then
+    if decoder is UTF8StringDecoder then
       _size = data.size()
       _alloc = data.space()
       let d2 = recover
@@ -201,7 +201,7 @@ actor Main
     Create a string from a single UTF-32 code point.
     """
     let bytes = Array[U8](4)
-    UTF8Encoder._add_encoded_bytes(bytes, UTF8Encoder.encode(value))
+    UTF8StringEncoder._add_encoded_bytes(bytes, UTF8StringEncoder.encode(value))
 
     _size = bytes.size()
     _alloc = _size + 1
@@ -246,7 +246,7 @@ actor Main
     ptr._update(_size, 0)
     ptr
 
-  fun val array(encoder: Encoder val = UTF8Encoder): Array[U8] val =>
+  fun val array(encoder: StringEncoder val = UTF8StringEncoder): Array[U8] val =>
     """
     Returns an Array[U8] that reuses the underlying data pointer if
     the provided Encoder matches the default system string encoding
@@ -255,18 +255,18 @@ actor Main
     """
     recover
       var rtrn_array: Array[U8]
-      if encoder is UTF8Encoder then
+      if encoder is UTF8StringEncoder then
         rtrn_array = Array[U8].from_cpointer(_ptr._unsafe(), _size, _alloc)
       else
         rtrn_array = Array[U8](_size)
         for c in values() do
-          UTF8Encoder._add_encoded_bytes(rtrn_array, encoder.encode(c))
+          UTF8StringEncoder._add_encoded_bytes(rtrn_array, encoder.encode(c))
         end
       end
       rtrn_array
     end
 
-  fun iso iso_array(encoder: Encoder val = UTF8Encoder): Array[U8] iso^ =>
+  fun iso iso_array(encoder: StringEncoder val = UTF8StringEncoder): Array[U8] iso^ =>
     """
     Returns an Array[U8] that reuses the underlying data pointer if
     the provided Encoder matches the default system string encoding
@@ -275,12 +275,12 @@ actor Main
     """
     recover
       var rtrn_array: Array[U8]
-      if encoder is UTF8Encoder then
+      if encoder is UTF8StringEncoder then
         rtrn_array = Array[U8].from_cpointer(_ptr._unsafe(), _size, _alloc)
       else
         rtrn_array = Array[U8](_size)
         for c in (consume this).values() do
-          UTF8Encoder._add_encoded_bytes(rtrn_array, encoder.encode(c))
+          UTF8StringEncoder._add_encoded_bytes(rtrn_array, encoder.encode(c))
         end
       end
       rtrn_array
@@ -1069,17 +1069,17 @@ actor Main
     """
     Push a character onto the end of the string.
     """
-    let encoded = UTF8Encoder.encode(value)
+    let encoded = UTF8StringEncoder.encode(value)
     let i = _size
     _size = _size + encoded._1
     reserve(_size)
-    _set(i, encoded._2)
+    _set(i, (encoded._2 and 0xFF).u8())
     if encoded._1 > 1 then
-      _set(i + 1, encoded._3)
+      _set(i + 1, ((encoded._2 >> 8) and 0xFF).u8())
       if encoded._1 > 2 then
-        _set(i + 2, encoded._4)
+        _set(i + 2, ((encoded._2 >> 16) and 0xFF).u8())
         if encoded._1 > 3 then
-          _set(i + 3, encoded._5)
+          _set(i + 3, ((encoded._2 >> 24) and 0xFF).u8())
         end
       end
     end
@@ -1188,7 +1188,7 @@ actor Main
       end
     end
 
-  fun ref concat_bytes(iter: Iterator[U8], decoder: Decoder = UTF8Decoder) =>
+  fun ref concat_bytes(iter: Iterator[U8], decoder: StringDecoder = UTF8StringDecoder) =>
     """
     Add all iterated bytes to the end of the string converting bytes to codepoints
     using the provided Decoder.
@@ -1955,22 +1955,22 @@ actor Main
     """
     _ptr._update(i, value)
 
-  fun tag _validate_encoding(data: Array[U8] box, decoder: Decoder) =>
+  fun tag _validate_encoding(data: Array[U8] box, decoder: StringDecoder) =>
     let byte_consumer = {(codepoint: U32) => None} ref
     _process_byte_array(data.values(), decoder, byte_consumer)
 
-  fun tag _recode_byte_array(data: Array[U8] box, decoder: Decoder val): Array[U8] =>
+  fun tag _recode_byte_array(data: Array[U8] box, decoder: StringDecoder val): Array[U8] =>
       let utf8_encoded_bytes = Array[U8](data.size())
       let byte_consumer = {ref(codepoint: U32)(utf8_encoded_bytes) =>
-        UTF8Encoder._add_encoded_bytes(utf8_encoded_bytes, UTF8Encoder.encode(codepoint))
+        UTF8StringEncoder._add_encoded_bytes(utf8_encoded_bytes, UTF8StringEncoder.encode(codepoint))
       }
       _process_byte_array(data.values(), decoder, byte_consumer)
       utf8_encoded_bytes
 
   fun tag _process_byte_array(data: Iterator[U8] ref,
-                              decoder: Decoder val,
+                              decoder: StringDecoder val,
                               byte_consumer: {ref(U32)} ref) =>
-    let v_bytes = DecoderBytes.create()
+    let v_bytes = StringDecoderBytes.create()
     for b in data do
       v_bytes.pushByte(b)
 

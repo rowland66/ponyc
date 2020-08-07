@@ -1,4 +1,4 @@
-trait val Decoder
+trait val StringDecoder
   """
   A Decoder converts bytes into unicode codepoints.
   """
@@ -11,7 +11,7 @@ trait val Decoder
   cannot be converted to a codepoint, codepoint 0xFFFD is returned.
   """
 
-class DecoderBytes
+class StringDecoderBytes
   """
   A class that maintains a U32 that can be loaded with bytes from a byte stream and
   passed to the decode function.

@@ -249,11 +249,11 @@ class File
       recover Array[U8] end
     end
 
-    fun ref read_string(len: USize, decoder: Decoder = UTF8Decoder): String iso^ =>
+    fun ref read_string(len: USize, decoder: StringDecoder = UTF8StringDecoder): String iso^ =>
       """
       Returns up to len bytes. The resulting string may have internal null
       characters. The length parameter is the number of bytes to read, not the
-      number of characters to read. 
+      number of characters to read.
       """
       if _fd != -1 then
         let bytes = recover Array[U8](len) end
@@ -275,7 +275,7 @@ class File
         recover String end
       end
 
-  fun ref print(data: (String ref | String val | ByteSeq box), encoder: Encoder = UTF8Encoder): Bool =>
+  fun ref print(data: (String ref | String val | ByteSeq box), encoder: StringEncoder = UTF8StringEncoder): Bool =>
     """
     Same as write, buts adds a newline.
     """
@@ -284,7 +284,7 @@ class File
 
     _pending_writes()
 
-  fun ref printv(data: (StringIter box | ByteSeqIter box), encoder: Encoder = UTF8Encoder): Bool =>
+  fun ref printv(data: (StringIter box | ByteSeqIter box), encoder: StringEncoder = UTF8StringEncoder): Bool =>
     """
     Print an iterable collection of ByteSeqs.
     """
@@ -302,7 +302,7 @@ class File
     end
     _pending_writes()
 
-  fun ref write(data: (String box | ByteSeq box), encoder: Encoder = UTF8Encoder): Bool =>
+  fun ref write(data: (String box | ByteSeq box), encoder: StringEncoder = UTF8StringEncoder): Bool =>
     """
     Returns false if the file wasn't opened with write permission.
     Returns false and closes the file if not all the bytes were written.
@@ -311,7 +311,7 @@ class File
 
     _pending_writes()
 
-  fun ref writev(data: (StringIter box | ByteSeqIter box), encoder: Encoder = UTF8Encoder): Bool =>
+  fun ref writev(data: (StringIter box | ByteSeqIter box), encoder: StringEncoder = UTF8StringEncoder): Bool =>
     """
     Write an iterable collection of ByteSeqs.
     """
@@ -327,7 +327,7 @@ class File
     end
     _pending_writes()
 
-  fun ref queue(data: (String box | ByteSeq box), encoder: Encoder = UTF8Encoder) =>
+  fun ref queue(data: (String box | ByteSeq box), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Queue data to be written
     NOTE: Queue'd data will always be written before normal print/write
@@ -343,7 +343,7 @@ class File
       _pending_writev_total = _pending_writev_total + data.size()
     end
 
-  fun ref queuev_string(si: StringIter, encoder: Encoder val = UTF8Encoder) =>
+  fun ref queuev_string(si: StringIter, encoder: StringEncoder val = UTF8StringEncoder) =>
     for string in si.values() do
       queue(string.array(encoder))
     end

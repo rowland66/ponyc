@@ -240,7 +240,7 @@ actor ProcessMonitor
     _notifier.created(this)
 
 
-  be print(data: (String | ByteSeq), encoder: Encoder = UTF8Encoder) =>
+  be print(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Print some bytes and append a newline.
     """
@@ -255,7 +255,7 @@ actor ProcessMonitor
       end
     end
 
-  be write(data: (String | ByteSeq), encoder: Encoder = UTF8Encoder) =>
+  be write(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Write to STDIN of the child process.
     """
@@ -268,7 +268,7 @@ actor ProcessMonitor
       end
     end
 
-  be printv(data: (StringIter | ByteSeqIter), encoder: Encoder = UTF8Encoder) =>
+  be printv(data: (StringIter | ByteSeqIter), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Print an iterable collection of ByteSeqs.
     """
@@ -285,7 +285,7 @@ actor ProcessMonitor
       end
     end
 
-  be writev(data: (StringIter | ByteSeqIter), encoder: Encoder = UTF8Encoder) =>
+  be writev(data: (StringIter | ByteSeqIter), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Write an iterable collection of ByteSeqs.
     """

@@ -161,14 +161,14 @@ class Reader
     u8()?
     b
 
-  fun ref codepoint(decoder: Decoder = UTF8Decoder): (U32, U8) ? =>
+  fun ref codepoint(decoder: StringDecoder = UTF8StringDecoder): (U32, U8) ? =>
     """
     Return a pair containing a unicode codepoint, and the number of bytes consumed to produce
     the codepoint. Depending on how bytes are decoded into characters, the number of bytes consumed
     may be greater than one. If the bytes cannot be converted to a codepoint, codepoint 0xFFFD
     is returned, and 1 byte is consumed.
     """
-    let decoder_bytes = DecoderBytes.create()
+    let decoder_bytes = StringDecoderBytes.create()
     while (decoder_bytes.bytes_loaded() < 4) do
       try
         decoder_bytes.pushByte(peek_u8(decoder_bytes.bytes_loaded().usize())?)
@@ -190,7 +190,7 @@ class Reader
     end
     (0,0) // This should never happen
 
-  fun ref string(len: USize, decoder: Decoder = UTF8Decoder): (String iso^, USize) ? =>
+  fun ref string(len: USize, decoder: StringDecoder = UTF8StringDecoder): (String iso^, USize) ? =>
     """
     Return a pair containing a string of the specified length in characters, and the number of bytes consumed
     to produce the string. Depending on how bytes are decoded into characters, the number of bytes consumed
@@ -208,7 +208,7 @@ class Reader
     end
     (consume result, bytes_read)
 
-  fun ref line(keep_line_breaks: Bool = false, decoder: Decoder = UTF8Decoder): (String iso^, USize) ? =>
+  fun ref line(keep_line_breaks: Bool = false, decoder: StringDecoder = UTF8StringDecoder): (String iso^, USize) ? =>
     """
     Return a pair containing a \n or \r\n terminated line as a string, and the number
     of bytes consumed to produce the string.  By default the newline is not

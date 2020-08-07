@@ -426,7 +426,7 @@ actor TCPConnection
     _queue_read()
     _pending_reads()
 
-  be write(data: (String | ByteSeq), encoder: Encoder = UTF8Encoder) =>
+  be write(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Write a single sequence of bytes. Data will be silently discarded if the
     connection has not yet been established though.
@@ -442,7 +442,7 @@ actor TCPConnection
       _in_sent = false
     end
 
-  be writev(data: (StringIter | ByteSeqIter), encoder: Encoder = UTF8Encoder) =>
+  be writev(data: (StringIter | ByteSeqIter), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Write a sequence of sequences of bytes. Data will be silently discarded if
     the connection has not yet been established though.
@@ -688,7 +688,7 @@ actor TCPConnection
     """
     _pending_reads()
 
-  fun ref write_final(data: (String | ByteSeq), encoder: Encoder = UTF8Encoder) =>
+  fun ref write_final(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Write as much as possible to the socket. Set `_writeable` to `false` if not
     everything was written. On an error, close the connection. This is for data

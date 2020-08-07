@@ -1,10 +1,10 @@
-primitive UTF8Decoder is Decoder
+primitive UTF8StringDecoder is StringDecoder
 
   fun decode(b: U32): (U32, U8) =>
     """
-    Decode up to 4 UTF-8 bytes into a unicode code point. It returns a tuple 
+    Decode up to 4 UTF-8 bytes into a unicode code point. It returns a tuple
     with the codepoint (U32) and the number of bytes consumed.
-    """    
+    """
     let err: (U32, U8) = (0xFFFD, 1)
 
     let b1:U8 = ((b and 0xFF000000) >> 24).u8()

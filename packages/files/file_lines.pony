@@ -14,7 +14,7 @@ class FileLines is Iterator[String iso^]
   let _reader: Reader = Reader
   let _file: File
   let _min_read_size: USize
-  let _decoder: Decoder
+  let _decoder: StringDecoder
   var _last_line_length: USize
   var _buffer_cursor: USize
     """Internal cursor for keeping track until where in the file we already buffered."""
@@ -22,7 +22,7 @@ class FileLines is Iterator[String iso^]
     """Keeps track of the file position we update after every returned line."""
   var _has_next: Bool
 
-  new create(file: File, min_read_size: USize = 256, decoder: Decoder = UTF8Decoder) =>
+  new create(file: File, min_read_size: USize = 256, decoder: StringDecoder = UTF8StringDecoder) =>
     """
     Create a FileLines instance on a given file.
 

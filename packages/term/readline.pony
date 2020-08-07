@@ -13,7 +13,7 @@ class Readline is ANSINotify
   embed _history: Array[String]
   embed _queue: Array[String] = Array[String]
   let _maxlen: USize
-  let _decoder: Decoder val
+  let _decoder: StringDecoder val
 
   var _edit: String iso = recover String end
   var _cur_prompt: String = ""
@@ -28,7 +28,7 @@ class Readline is ANSINotify
     out: OutStream,
     path: (FilePath | None) = None,
     maxlen: USize = 0,
-    decoder: Decoder val = UTF8Decoder)
+    decoder: StringDecoder val = UTF8StringDecoder)
   =>
     """
     Create a readline handler to be passed to stdin. It begins blocked. Set an

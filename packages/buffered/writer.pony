@@ -251,7 +251,7 @@ class Writer
     """
     u128_be(data.u128())
 
-  fun ref write(data: (String | ByteSeq), encoder: Encoder = UTF8Encoder) =>
+  fun ref write(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
     """
     Write a String or a ByteSeq to the buffer. String characters will be converted to bytes using
     the specified encoding (UTF-8 by default).
