@@ -200,13 +200,13 @@ actor Main
     """
     Create a string from a single UTF-32 code point.
     """
-    let bytes = Array[U8](4)
-    UTF8StringEncoder._add_encoded_bytes(bytes, UTF8StringEncoder.encode(value))
+    let byte_array = Array[U8](4)
+    UTF8StringEncoder._add_encoded_bytes(byte_array, UTF8StringEncoder.encode(value))
 
-    _size = bytes.size()
+    _size = byte_array.size()
     _alloc = _size + 1
     _ptr = Pointer[U8]._alloc(_alloc)
-    bytes._copy_to(_ptr, _size)
+    byte_array._copy_to(_ptr, _size)
     _set(_size, 0)
 
   fun ref push_utf32(value: U32) =>
@@ -1949,6 +1949,12 @@ actor Main
     """
     StringRunes(this)
 
+  fun bytes(encoder: StringEncoder = UTF8StringEncoder): Iterator[U8] =>
+    StringBytes(this, encoder)
+
+  fun _byte(i: USize): U8 =>
+    _ptr._apply(i)
+
   fun ref _set(i: USize, value: U8): U8 =>
     """
     Unsafe update, used internally.
@@ -2002,3 +2008,39 @@ class StringRunes is Iterator[U32]
     (let rune, let len) = _string._codepoint(_i)?
     _i = _i + len.usize()
     rune
+
+class StringBytes is Iterator[U8]
+  let _string: String box
+  let _encoder: StringEncoder val
+  var _i: USize = 0
+  var _byte_pos: USize = 0
+
+  new create(string: String box, encoder: StringEncoder) =>
+    _string = string
+    _encoder = encoder
+
+  fun has_next(): Bool =>
+    _i < _string.byte_size()
+
+  fun ref next(): U8 ? =>
+    if  _encoder is UTF8StringEncoder then
+      if _i < _string.byte_size() then
+        let b = _string._byte(_i)
+        _i = _i + 1
+        return b
+      else
+        error
+      end
+    else
+      (let cp, let sz) = _string._codepoint(_i)?
+      (let byte_size, let byte_u32) = _encoder.encode(cp)
+      if _byte_pos == byte_size then
+        _i = _i + sz.usize()
+        _byte_pos = 0
+        return next()?
+      else
+        let result = ((byte_u32 >> (_byte_pos * 8).u32()) and 0xFF).u8()
+        _byte_pos = _byte_pos + 1
+        return result
+      end
+    end

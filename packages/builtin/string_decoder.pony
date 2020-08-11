@@ -40,5 +40,9 @@ class StringDecoderBytes
     _decode_bytes
 
   fun ref process_bytes(count: U8) =>
-    _decode_bytes = (_decode_bytes <<~ (count * 8).u32())
+    if (count == 4) then
+      _decode_bytes = 0
+    else
+      _decode_bytes = (_decode_bytes <<~ (count * 8).u32())
+    end
     _bytes_loaded = _bytes_loaded - count

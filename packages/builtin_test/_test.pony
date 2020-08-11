@@ -23,6 +23,12 @@ actor Main is TestList
     test(_TestStringToU8)
     test(_TestStringToI8)
     test(_TestStringToIntLarge)
+    test(_TestStringToArray)
+    test(_TestStringToUTF16BEArray)
+    test(_TestStringToUTF16LEArray)
+    test(_TestStringToUTF32BEArray)
+    test(_TestStringToUTF32LEArray)
+    test(_TestStringToISO88591Array)
     test(_TestStringLstrip)
     test(_TestStringRstrip)
     test(_TestStringStrip)
@@ -49,6 +55,11 @@ actor Main is TestList
     test(_TestStringDelete)
     test(_TestStringFromArray)
     test(_TestStringFromIsoArray)
+    test(_TestStringFromUTF16BEArray)
+    test(_TestStringFromUTF16LEArray)
+    test(_TestStringFromUTF32BEArray)
+    test(_TestStringFromUTF32LEArray)
+    test(_TestStringFromISO88591Array)
     test(_TestStringSpace)
     test(_TestStringRecalc)
     //test(_TestStringTruncate)
@@ -418,6 +429,98 @@ class iso _TestStringToIntLarge is UnitTest
     h.assert_eq[I128](-10, "-10".i128()?)
     h.assert_error({() ? => "30L".i128()? }, "I128 30L")
 
+class iso _TestStringToArray is UnitTest
+
+  fun name(): String => "builtin/String.toArray"
+
+  fun apply(h: TestHelper) =>
+    let s = "foo€🐎"
+    let a_utf8 = s.array()
+
+    let a_expected: Array[U8] val = recover val
+      ['f'; 'o'; 'o'; 0xe2; 0x82; 0xac; 0xf0; 0x9f; 0x90; 0x8e]
+    end
+
+    h.assert_array_eq[U8](a_expected, a_utf8 )
+
+class iso _TestStringToUTF16BEArray is UnitTest
+
+  fun name(): String => "builtin/String.toUTF16BEArray"
+
+  fun apply(h: TestHelper) =>
+    let s = "foo€🐎"
+    let a_utf16BE = s.array(UTF16BEStringEncoder)
+
+    let a_expected: Array[U8] val = recover val
+      [0x00; 'f'; 0x00; 'o'; 0x00; 'o'; 0x20; 0xAC; 0xD8; 0x3D; 0xDC; 0x0E]
+    end
+
+    h.assert_array_eq[U8](a_expected, a_utf16BE )
+
+class iso _TestStringToUTF16LEArray is UnitTest
+
+  fun name(): String => "builtin/String.toUTF16LEArray"
+
+  fun apply(h: TestHelper) =>
+    let s = "foo€🐎"
+    let a_utf16LE = s.array(UTF16LEStringEncoder)
+
+    let a_expected: Array[U8] val = recover val
+      ['f'; 0x00; 'o'; 0x00; 'o'; 0x00; 0xAC; 0x20; 0x3D; 0xD8; 0x0E; 0xDC]
+    end
+
+    h.assert_array_eq[U8](a_expected, a_utf16LE )
+
+class iso _TestStringToUTF32BEArray is UnitTest
+
+  fun name(): String => "builtin/String.toUTF32BEArray"
+
+  fun apply(h: TestHelper) =>
+    let s = "foo€🐎"
+    let a_utf32BE = s.array(UTF32BEStringEncoder)
+
+    let a_expected: Array[U8] val = recover val
+      [0x00; 0x00; 0x00; 'f'
+       0x00; 0x00; 0x00; 'o'
+       0x00; 0x00; 0x00; 'o'
+       0x00; 0x00; 0x20; 0xAC
+       0x00; 0x01; 0xF4; 0x0E]
+    end
+
+    h.assert_array_eq[U8](a_expected, a_utf32BE )
+
+class iso _TestStringToUTF32LEArray is UnitTest
+
+  fun name(): String => "builtin/String.toUTF32LEArray"
+
+  fun apply(h: TestHelper) =>
+    let s = "foo€🐎"
+    let a_utf32LE = s.array(UTF32LEStringEncoder)
+
+    let a_expected: Array[U8] val = recover val
+      ['f'; 0x00; 0x00; 0x00
+       'o'; 0x00; 0x00; 0x00
+       'o'; 0x00; 0x00; 0x00
+       0xAC; 0x20; 0x00; 0x00
+       0x0E; 0xF4; 0x01; 0x00]
+    end
+
+    h.assert_array_eq[U8](a_expected, a_utf32LE )
+
+class iso _TestStringToISO88591Array is UnitTest
+
+  fun name(): String => "builtin/String.toISO-8859-1Array"
+
+  fun apply(h: TestHelper) =>
+    let s = "fooÖ🐎"
+    let a_iso88591 = s.array(ISO88591StringEncoder)
+
+    let a_expected: Array[U8] val = recover val
+      ['f'; 'o'; 'o'; 0xD6; 0x3F]
+    end
+
+    h.assert_array_eq[U8](a_expected, a_iso88591 )
+
 class iso _TestStringLstrip is UnitTest
   """
   Test stripping leading characters from a string.
@@ -492,21 +595,25 @@ class iso _TestStringRemove is UnitTest
     let s2 = recover "barfoobar".clone() end
     let s3 = recover "f-o-o-b-a-r!".clone() end
     let s4 = recover "f-o-o-b-a-r!".clone() end
+    let s5 = recover "€foo 🐎 €bar".clone() end
 
     let r1 = s1.remove(" ")
     let r2 = s2.remove("foo")
     let r3 = s3.remove("-")
     let r4 = s4.remove("-!")
+    let r5 = s5.remove("🐎")
 
     h.assert_eq[USize](7, r1)
     h.assert_eq[USize](1, r2)
     h.assert_eq[USize](5, r3)
     h.assert_eq[USize](0, r4)
+    h.assert_eq[USize](1, r5)
 
     h.assert_eq[String]("foobar", consume s1)
     h.assert_eq[String]("barbar", consume s2)
     h.assert_eq[String]("foobar!", consume s3)
     h.assert_eq[String]("f-o-o-b-a-r!", consume s4)
+    h.assert_eq[String]("€foo  €bar", consume s5)
 
 class iso _TestStringSubstring is UnitTest
   """
@@ -569,8 +676,8 @@ class iso _TestStringTrimInPlace is UnitTest
     case(h, "456", "0123456", 4 where space = 3)
     case(h, "", "0123456", 4, 4, 0)
     case(h, "", "0123456", 4, 1, 0)
-    //case(h, "456", "0123456789".clone().>trim_in_place(1, 8), 3, 6, 3)
-    //case(h, "456", "0123456789".trim(1, 8), 3, 6, 3)
+    case(h, "456", "0123456789".clone().>trim_in_place(1, 8), 3, 6, 3)
+    case(h, "456", "0123456789".trim(1, 8), 3, 6, 3)
     case(h, "", "0123456789".clone().>trim_in_place(1, 8), 3, 3, 0)
 
   fun case(
@@ -1128,6 +1235,64 @@ class iso _TestStringFromIsoArray is UnitTest
     h.assert_eq[String](s2, "11111111")
     h.assert_eq[USize](s2.size(), 8)
     h.assert_true((s2.space() == 8) xor s2.is_null_terminated())
+
+class iso _TestStringFromUTF16BEArray is UnitTest
+  fun name(): String => "builtin/String.from_UTF16BE_array"
+
+  fun apply(h: TestHelper) =>
+    let s_utf16BE = String.from_array(recover
+      [0x00; 'f'; 0x00; 'o'; 0x00; 'o'; 0x20; 0xAC; 0xD8; 0x3D; 0xDC; 0x0E]
+    end, UTF16BEStringDecoder)
+    h.assert_eq[String]("foo€🐎", s_utf16BE )
+    h.assert_eq[USize](5, s_utf16BE.size())
+
+class iso _TestStringFromUTF16LEArray is UnitTest
+  fun name(): String => "builtin/String.from_UTF16LE_array"
+
+  fun apply(h: TestHelper) =>
+    let s_utf16BE = String.from_array(recover
+      ['f'; 0x00; 'o'; 0x00; 'o'; 0x00; 0xAC; 0x20; 0x3D; 0xD8; 0x0E; 0xDC]
+    end, UTF16LEStringDecoder)
+    h.assert_eq[String]("foo€🐎", s_utf16BE)
+    h.assert_eq[USize](5, s_utf16BE.size())
+
+class iso _TestStringFromUTF32BEArray is UnitTest
+  fun name(): String => "builtin/String.from_UTF32BE_array"
+
+  fun apply(h: TestHelper) =>
+    let s_utf32BE = String.from_array(recover
+      [0x00; 0x00; 0x00; 'f'
+       0x00; 0x00; 0x00; 'o'
+       0x00; 0x00; 0x00; 'o'
+       0x00; 0x00; 0x20; 0xAC
+       0x00; 0x01; 0xF4; 0x0E]
+    end, UTF32BEStringDecoder)
+    h.assert_eq[String]("foo€🐎", s_utf32BE )
+    h.assert_eq[USize](5, s_utf32BE.size())
+
+class iso _TestStringFromUTF32LEArray is UnitTest
+  fun name(): String => "builtin/String.from_UTF32LE_array"
+
+  fun apply(h: TestHelper) =>
+    let s_utf32LE = String.from_array(recover
+      ['f'; 0x00; 0x00; 0x00
+       'o'; 0x00; 0x00; 0x00
+       'o'; 0x00; 0x00; 0x00
+       0xAC; 0x20; 0x00; 0x00
+       0x0E; 0xF4; 0x01; 0x00]
+    end, UTF32LEStringDecoder)
+    h.assert_eq[String]("foo€🐎", s_utf32LE )
+    h.assert_eq[USize](5, s_utf32LE.size())
+
+class iso _TestStringFromISO88591Array is UnitTest
+  fun name(): String => "builtin/String.from_ISO-8859-1_array"
+
+  fun apply(h: TestHelper) =>
+    let s_iso88591 = String.from_array(recover
+      ['f'; 'o'; 'o'; 0xD6]
+    end, ISO88591StringDecoder)
+    h.assert_eq[String]("fooÖ", s_iso88591 )
+    h.assert_eq[USize](4, s_iso88591.size())
 
 class iso _TestStringSpace is UnitTest
   fun name(): String => "builtin/String.space"
