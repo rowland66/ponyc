@@ -416,6 +416,17 @@ actor Main
       _size = s
     end
 
+  fun ref resize(len: USize) =>
+    """
+    Increase the size of a string to the give len in bytes. This is an
+    unsafe operation, and should only be used when string's _ptr has
+    been manipulated through a FFI call and the string size is known.
+    """
+    if len > _size then
+      _size = len
+      _set(_size, 0)
+    end
+
   fun ref truncate(len: USize) =>
     """
     Truncates the string at the minimum of len and size. Ensures there is a
@@ -1188,16 +1199,29 @@ actor Main
       end
     end
 
-  fun ref concat_bytes(iter: Iterator[U8], decoder: StringDecoder = UTF8StringDecoder) =>
+  fun ref concat_bytes(iter: Iterator[U8], offset: USize = 0, len: USize = -1, decoder: StringDecoder = UTF8StringDecoder) =>
     """
     Add all iterated bytes to the end of the string converting bytes to codepoints
     using the provided Decoder.
     """
-      _process_byte_array(iter,
+    try
+      var n = USize(0)
+
+      while n < offset do
+        if iter.has_next() then
+          iter.next()?
+        else
+          return
+        end
+        n = n + 1
+      end
+
+      _process_byte_array(_LimittedIterator[U8](iter, len),
                           decoder,
                           {ref(codepoint: U32)(str = this) =>
                             str.push(codepoint)
                           })
+    end
 
   fun ref clear() =>
     """
@@ -2044,3 +2068,20 @@ class StringBytes is Iterator[U8]
         return result
       end
     end
+
+class _LimittedIterator[A] is Iterator[A]
+  let _iter: Iterator[A]
+  var _limit: USize
+
+  new create(iter: Iterator[A], limit: USize) =>
+    _iter = iter
+    _limit = limit
+
+  fun ref has_next(): Bool =>
+    _iter.has_next() and (_limit > 0)
+
+  fun ref next(): A ? =>
+    if has_next() then
+      return _iter.next()?
+    end
+    error
