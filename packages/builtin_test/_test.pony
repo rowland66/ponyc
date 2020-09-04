@@ -449,7 +449,7 @@ class iso _TestStringToUTF16BEArray is UnitTest
 
   fun apply(h: TestHelper) =>
     let s = "foo€🐎"
-    let a_utf16BE = s.array(UTF16BEStringEncoder)
+    let a_utf16BE = s.array[UTF16BEStringEncoder]()
 
     let a_expected: Array[U8] val = recover val
       [0x00; 'f'; 0x00; 'o'; 0x00; 'o'; 0x20; 0xAC; 0xD8; 0x3D; 0xDC; 0x0E]
@@ -463,7 +463,7 @@ class iso _TestStringToUTF16LEArray is UnitTest
 
   fun apply(h: TestHelper) =>
     let s = "foo€🐎"
-    let a_utf16LE = s.array(UTF16LEStringEncoder)
+    let a_utf16LE = s.array[UTF16LEStringEncoder]()
 
     let a_expected: Array[U8] val = recover val
       ['f'; 0x00; 'o'; 0x00; 'o'; 0x00; 0xAC; 0x20; 0x3D; 0xD8; 0x0E; 0xDC]
@@ -477,7 +477,7 @@ class iso _TestStringToUTF32BEArray is UnitTest
 
   fun apply(h: TestHelper) =>
     let s = "foo€🐎"
-    let a_utf32BE = s.array(UTF32BEStringEncoder)
+    let a_utf32BE = s.array[UTF32BEStringEncoder]()
 
     let a_expected: Array[U8] val = recover val
       [0x00; 0x00; 0x00; 'f'
@@ -495,7 +495,7 @@ class iso _TestStringToUTF32LEArray is UnitTest
 
   fun apply(h: TestHelper) =>
     let s = "foo€🐎"
-    let a_utf32LE = s.array(UTF32LEStringEncoder)
+    let a_utf32LE = s.array[UTF32LEStringEncoder]()
 
     let a_expected: Array[U8] val = recover val
       ['f'; 0x00; 0x00; 0x00
@@ -513,7 +513,7 @@ class iso _TestStringToISO88591Array is UnitTest
 
   fun apply(h: TestHelper) =>
     let s = "fooÖ🐎"
-    let a_iso88591 = s.array(ISO88591StringEncoder)
+    let a_iso88591 = s.array[ISO88591StringEncoder]()
 
     let a_expected: Array[U8] val = recover val
       ['f'; 'o'; 'o'; 0xD6; 0x3F]
@@ -1240,9 +1240,9 @@ class iso _TestStringFromUTF16BEArray is UnitTest
   fun name(): String => "builtin/String.from_UTF16BE_array"
 
   fun apply(h: TestHelper) =>
-    let s_utf16BE = String.from_array(recover
+    let s_utf16BE = String.from_array[UTF16BEStringDecoder](recover
       [0x00; 'f'; 0x00; 'o'; 0x00; 'o'; 0x20; 0xAC; 0xD8; 0x3D; 0xDC; 0x0E]
-    end, UTF16BEStringDecoder)
+    end)
     h.assert_eq[String]("foo€🐎", s_utf16BE )
     h.assert_eq[USize](5, s_utf16BE.size())
 
@@ -1250,9 +1250,9 @@ class iso _TestStringFromUTF16LEArray is UnitTest
   fun name(): String => "builtin/String.from_UTF16LE_array"
 
   fun apply(h: TestHelper) =>
-    let s_utf16BE = String.from_array(recover
+    let s_utf16BE = String.from_array[UTF16LEStringDecoder](recover
       ['f'; 0x00; 'o'; 0x00; 'o'; 0x00; 0xAC; 0x20; 0x3D; 0xD8; 0x0E; 0xDC]
-    end, UTF16LEStringDecoder)
+    end)
     h.assert_eq[String]("foo€🐎", s_utf16BE)
     h.assert_eq[USize](5, s_utf16BE.size())
 
@@ -1260,13 +1260,13 @@ class iso _TestStringFromUTF32BEArray is UnitTest
   fun name(): String => "builtin/String.from_UTF32BE_array"
 
   fun apply(h: TestHelper) =>
-    let s_utf32BE = String.from_array(recover
+    let s_utf32BE = String.from_array[UTF32BEStringDecoder](recover
       [0x00; 0x00; 0x00; 'f'
        0x00; 0x00; 0x00; 'o'
        0x00; 0x00; 0x00; 'o'
        0x00; 0x00; 0x20; 0xAC
        0x00; 0x01; 0xF4; 0x0E]
-    end, UTF32BEStringDecoder)
+    end)
     h.assert_eq[String]("foo€🐎", s_utf32BE )
     h.assert_eq[USize](5, s_utf32BE.size())
 
@@ -1274,13 +1274,13 @@ class iso _TestStringFromUTF32LEArray is UnitTest
   fun name(): String => "builtin/String.from_UTF32LE_array"
 
   fun apply(h: TestHelper) =>
-    let s_utf32LE = String.from_array(recover
+    let s_utf32LE = String.from_array[UTF32LEStringDecoder](recover
       ['f'; 0x00; 0x00; 0x00
        'o'; 0x00; 0x00; 0x00
        'o'; 0x00; 0x00; 0x00
        0xAC; 0x20; 0x00; 0x00
        0x0E; 0xF4; 0x01; 0x00]
-    end, UTF32LEStringDecoder)
+    end)
     h.assert_eq[String]("foo€🐎", s_utf32LE )
     h.assert_eq[USize](5, s_utf32LE.size())
 
@@ -1288,9 +1288,9 @@ class iso _TestStringFromISO88591Array is UnitTest
   fun name(): String => "builtin/String.from_ISO-8859-1_array"
 
   fun apply(h: TestHelper) =>
-    let s_iso88591 = String.from_array(recover
+    let s_iso88591 = String.from_array[ISO88591StringDecoder](recover
       ['f'; 'o'; 'o'; 0xD6]
-    end, ISO88591StringDecoder)
+    end)
     h.assert_eq[String]("fooÖ", s_iso88591 )
     h.assert_eq[USize](4, s_iso88591.size())
 

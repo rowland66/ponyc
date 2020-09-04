@@ -1,6 +1,6 @@
 use "buffered"
 
-class FileCharacters is Iterator[U32]
+class FileCharacters[D: StringDecoder = UTF8StringDecoder] is Iterator[U32]
   """
   Iterate over the characters in a file.
   """
@@ -11,15 +11,13 @@ class FileCharacters is Iterator[U32]
     """Internal cursor for keeping track until where in the file we already buffered."""
   var _cursor: USize
     """Keeps track of the file position we update after every returned line."""
-  let _decoder: StringDecoder val
   embed _decoder_bytes: StringDecoderBytes
 
-new create(file: File, buffer_size: USize = 256, decoder: StringDecoder = UTF8StringDecoder) =>
+new create(file: File, buffer_size: USize = 256) =>
   _file = file
   _buffer_size = buffer_size
   _buffer_cursor = _file.position()
   _cursor = _file.position()
-  _decoder = decoder
   _decoder_bytes = StringDecoderBytes.create()
 
 fun ref has_next(): Bool =>
@@ -49,7 +47,7 @@ fun ref next(): U32 ? =>
   error
 
 fun ref _read(): U32 ? =>
-  (let char, let sz) = _reader.codepoint(_decoder)?
+  (let char, let sz) = _reader.codepoint[D]()?
   // advance the cursor to the end of the returned line
   _inc_public_file_cursor(sz.usize())
   char

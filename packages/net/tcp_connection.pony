@@ -426,7 +426,7 @@ actor TCPConnection
     _queue_read()
     _pending_reads()
 
-  be write(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
+  be write[E: StringEncoder val = UTF8StringEncoder](data: (String | ByteSeq)) =>
     """
     Write a single sequence of bytes. Data will be silently discarded if the
     connection has not yet been established though.
@@ -435,14 +435,14 @@ actor TCPConnection
       _in_sent = true
       match data
       | let s: String =>
-        write_final(_notify.sent(this, s.array(encoder)))
+        write_final(_notify.sent(this, s.array[E]()))
       | let b: ByteSeq =>
         write_final(_notify.sent(this, b))
       end
       _in_sent = false
     end
 
-  be writev(data: (StringIter | ByteSeqIter), encoder: StringEncoder = UTF8StringEncoder) =>
+  be writev[E: StringEncoder val = UTF8StringEncoder](data: (StringIter | ByteSeqIter)) =>
     """
     Write a sequence of sequences of bytes. Data will be silently discarded if
     the connection has not yet been established though.
@@ -455,7 +455,7 @@ actor TCPConnection
         match data
         | let si: StringIter =>
           for s in si.values() do
-            ba.push(s.array(encoder))
+            ba.push(s.array[E]())
           end
         | let bsi: ByteSeqIter =>
           ba .> concat(bsi.values())
@@ -688,7 +688,7 @@ actor TCPConnection
     """
     _pending_reads()
 
-  fun ref write_final(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
+  fun ref write_final[E: StringEncoder val = UTF8StringEncoder](data: (String | ByteSeq)) =>
     """
     Write as much as possible to the socket. Set `_writeable` to `false` if not
     everything was written. On an error, close the connection. This is for data
@@ -706,7 +706,7 @@ actor TCPConnection
           // Add an IOCP write.
           match data
           | let s: String =>
-            let a: Array[U8] val = s.array(encoder)
+            let a: Array[U8] val = s.array[E]()
             _pending_writev_windows .> push((a.size(), a.cpointer()))
             _pending_writev_total = _pending_writev_total + a.size()
           else
@@ -728,7 +728,7 @@ actor TCPConnection
       else
         match data
         | let s: String =>
-          let a: Array[U8] val = s.array(encoder)
+          let a: Array[U8] val = s.array[E]()
           _pending_writev_posix .> push((a.cpointer(), a.size()))
           _pending_writev_total = _pending_writev_total + a.size()
         else

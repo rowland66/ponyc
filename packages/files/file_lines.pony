@@ -1,6 +1,6 @@
 use "buffered"
 
-class FileLines is Iterator[String iso^]
+class FileLines[D: StringDecoder = UTF8StringDecoder] is Iterator[String iso^]
   """
   Iterate over the lines in a file.
 
@@ -14,7 +14,6 @@ class FileLines is Iterator[String iso^]
   let _reader: Reader = Reader
   let _file: File
   let _min_read_size: USize
-  let _decoder: StringDecoder
   var _last_line_length: USize
   var _buffer_cursor: USize
     """Internal cursor for keeping track until where in the file we already buffered."""
@@ -22,7 +21,7 @@ class FileLines is Iterator[String iso^]
     """Keeps track of the file position we update after every returned line."""
   var _has_next: Bool
 
-  new create(file: File, min_read_size: USize = 256, decoder: StringDecoder = UTF8StringDecoder) =>
+  new create(file: File, min_read_size: USize = 256) =>
     """
     Create a FileLines instance on a given file.
 
@@ -41,7 +40,6 @@ class FileLines is Iterator[String iso^]
     _cursor = _file.position()
     _min_read_size = min_read_size
     _last_line_length = min_read_size
-    _decoder = decoder
     _has_next = _file.valid()
 
   fun ref has_next(): Bool =>
@@ -71,7 +69,7 @@ class FileLines is Iterator[String iso^]
     end
 
   fun ref _read_line(): String iso^ ? =>
-    (let line, let len) = _reader.line(where keep_line_breaks = true, decoder = _decoder)?
+    (let line, let len) = _reader.line[D](where keep_line_breaks = true)?
     _last_line_length = len
 
     // advance the cursor to the end of the returned line
@@ -117,7 +115,7 @@ class FileLines is Iterator[String iso^]
   fun ref _read_last_line(): String iso^ ? =>
     let block = _reader.block(_reader.size())?
     _inc_public_file_cursor(block.size())
-    String.from_iso_array(consume block, _decoder)
+    String.from_iso_array[D](consume block)
 
   fun ref _inc_public_file_cursor(amount: USize) =>
     _cursor = _cursor + amount

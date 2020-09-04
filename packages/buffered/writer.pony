@@ -251,7 +251,7 @@ class Writer
     """
     u128_be(data.u128())
 
-  fun ref write(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
+  fun ref write[E: StringEncoder val = UTF8StringEncoder](data: (String | ByteSeq)) =>
     """
     Write a String or a ByteSeq to the buffer. String characters will be converted to bytes using
     the specified encoding (UTF-8 by default).
@@ -264,7 +264,7 @@ class Writer
     if data.size() <= 64 then
       match data
       | let d: String =>
-         let a = d.array(encoder)
+         let a = d.array[E]()
          _current.copy_from(a, 0, _current.size(), a.size())
          _size = _size + a.size()
       | let d: ByteSeq =>
@@ -275,7 +275,7 @@ class Writer
       _append_current()
       match data
       | let s: String =>
-        _chunks.push(s.array(encoder))
+        _chunks.push(s.array[E]())
         _size = _size + s.byte_size()
       | let d: ByteSeq =>
         _chunks.push(d)

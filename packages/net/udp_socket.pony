@@ -149,25 +149,25 @@ actor UDPSocket
     _notify_listening()
     _start_next_read()
 
-  be write(data: (String | ByteSeq), to: NetAddress, encoder: StringEncoder = UTF8StringEncoder) =>
+  be write[E: StringEncoder val = UTF8StringEncoder](data: (String | ByteSeq), to: NetAddress) =>
     """
     Write a single sequence of bytes.
     """
     match data
     | let s: String =>
-      _write(s.array(encoder), to)
+      _write(s.array[E](), to)
     | let b: ByteSeq =>
       _write(b, to)
     end
 
-  be writev(data: (StringIter | ByteSeqIter), to: NetAddress, encoder: StringEncoder = UTF8StringEncoder) =>
+  be writev[E: StringEncoder val = UTF8StringEncoder](data: (StringIter | ByteSeqIter), to: NetAddress) =>
     """
     Write a sequence of sequences of bytes.
     """
     match data
     | let si: StringIter =>
       for s in si.values() do
-        _write(s.array(encoder), to)
+        _write(s.array[E](), to)
       end
     | let bsi: ByteSeqIter =>
       for bytes in bsi.values() do

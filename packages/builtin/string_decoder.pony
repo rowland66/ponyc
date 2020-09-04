@@ -2,6 +2,7 @@ trait val StringDecoder
   """
   A Decoder converts bytes into unicode codepoints.
   """
+  new val create()
 
   fun decode(b:U32): (U32, U8)
   """

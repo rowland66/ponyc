@@ -1,39 +1,37 @@
-actor FileStream is OutStream
+actor FileStream[E: StringEncoder val = UTF8StringEncoder] is OutStream
   """
   Asynchronous access to a File object. Wraps file operations print, write,
   printv and writev. The File will be disposed through File._final.
   """
   let _file: File
-  let _encoder: StringEncoder
 
-  new create(file: File iso, encoder: StringEncoder = UTF8StringEncoder) =>
+  new create(file: File iso) =>
     _file = consume file
-    _encoder = encoder
 
   be print(data: (String | ByteSeq)) =>
     """
     Print some bytes and insert a newline afterwards.
     """
-    _file.write(data, _encoder)
-    _file.write("\n", _encoder)
+    _file.write[E](data)
+    _file.write[E]("\n")
 
   be write(data: (String | ByteSeq)) =>
     """
     Print some bytes without inserting a newline afterwards.
     """
-    _file.write(data, _encoder)
+    _file.write[E](data)
 
   be printv(data: (StringIter | ByteSeqIter)) =>
     """
     Print an iterable collection of ByteSeqs.
     """
-    _file.printv(data, _encoder)
+    _file.printv[E](data)
 
   be writev(data: (StringIter | ByteSeqIter)) =>
     """
     Write an iterable collection of ByteSeqs.
     """
-    _file.writev(data, _encoder)
+    _file.writev[E](data)
 
   be flush() =>
     """

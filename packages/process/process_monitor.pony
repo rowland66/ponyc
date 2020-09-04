@@ -240,59 +240,59 @@ actor ProcessMonitor
     _notifier.created(this)
 
 
-  be print(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
+  be print[E: StringEncoder val = UTF8StringEncoder](data: (String | ByteSeq)) =>
     """
     Print some bytes and append a newline.
     """
     if not _done_writing then
       match data
       | let s: String =>
-        _write_final(s.array(encoder))
-        _write_final("\n".array(encoder))
+        _write_final(s.array[E]())
+        _write_final("\n".array[E]())
       | let bs: ByteSeq =>
         _write_final(bs)
-        _write_final("\n".array(encoder))
+        _write_final("\n".array[E]())
       end
     end
 
-  be write(data: (String | ByteSeq), encoder: StringEncoder = UTF8StringEncoder) =>
+  be write[E: StringEncoder val = UTF8StringEncoder](data: (String | ByteSeq)) =>
     """
     Write to STDIN of the child process.
     """
     if not _done_writing then
       match data
       | let s: String =>
-        _write_final(s.array(encoder))
+        _write_final(s.array[E]())
       | let bs: ByteSeq =>
         _write_final(bs)
       end
     end
 
-  be printv(data: (StringIter | ByteSeqIter), encoder: StringEncoder = UTF8StringEncoder) =>
+  be printv[E: StringEncoder val = UTF8StringEncoder](data: (StringIter | ByteSeqIter)) =>
     """
     Print an iterable collection of ByteSeqs.
     """
     match data
     | let si: StringIter =>
       for s in si.values() do
-        _write_final(s.array(encoder))
-        _write_final("\n".array(encoder))
+        _write_final(s.array[E]())
+        _write_final("\n".array[E]())
       end
     | let bsi: ByteSeqIter =>
       for bytes in bsi.values() do
         _write_final(bytes)
-        _write_final("\n".array(encoder))
+        _write_final("\n".array[E]())
       end
     end
 
-  be writev(data: (StringIter | ByteSeqIter), encoder: StringEncoder = UTF8StringEncoder) =>
+  be writev[E: StringEncoder val = UTF8StringEncoder](data: (StringIter | ByteSeqIter)) =>
     """
     Write an iterable collection of ByteSeqs.
     """
     match data
     | let si: StringIter =>
       for s in si.values() do
-        _write_final(s.array(encoder))
+        _write_final(s.array[E]())
       end
     | let bsi: ByteSeqIter =>
       for bytes in bsi.values() do

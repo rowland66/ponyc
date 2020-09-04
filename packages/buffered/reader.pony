@@ -161,7 +161,7 @@ class Reader
     u8()?
     b
 
-  fun ref codepoint(decoder: StringDecoder = UTF8StringDecoder): (U32, U8) ? =>
+  fun ref codepoint[D: StringDecoder = UTF8StringDecoder](): (U32, U8) ? =>
     """
     Return a pair containing a unicode codepoint, and the number of bytes consumed to produce
     the codepoint. Depending on how bytes are decoded into characters, the number of bytes consumed
@@ -174,7 +174,7 @@ class Reader
         decoder_bytes.pushByte(peek_u8(decoder_bytes.bytes_loaded().usize())?)
       else
         if decoder_bytes.bytes_loaded() > 0 then
-          (let c, let sz) = decoder.decode(decoder_bytes.decode_bytes())
+          (let c, let sz) = D.decode(decoder_bytes.decode_bytes())
           block(sz.usize())? // We ignore the bytes returned, but this will mark the bytes decoded into a character as consumed
           return (c, sz)
         else
@@ -184,13 +184,13 @@ class Reader
     end
 
     try
-      (let c, let sz) = decoder.decode(decoder_bytes.decode_bytes())
+      (let c, let sz) = D.decode(decoder_bytes.decode_bytes())
       block(sz.usize())? // We ignore the bytes returned, but this will mark the bytes decoded into a character as consumed
       return (c, sz)
     end
     (0,0) // This should never happen
 
-  fun ref string(len: USize, decoder: StringDecoder = UTF8StringDecoder): (String iso^, USize) ? =>
+  fun ref string[D: StringDecoder = UTF8StringDecoder](len: USize): (String iso^, USize) ? =>
     """
     Return a pair containing a string of the specified length in characters, and the number of bytes consumed
     to produce the string. Depending on how bytes are decoded into characters, the number of bytes consumed
@@ -201,14 +201,14 @@ class Reader
     var bytes_read: USize = 0
     var result: String iso = recover String(len) end
     while (chars_read < len) do
-      (let c, let sz) = codepoint(decoder)?
+      (let c, let sz) = codepoint[D]()?
       result.push(c)
       chars_read = chars_read + 1
       bytes_read = bytes_read + sz.usize()
     end
     (consume result, bytes_read)
 
-  fun ref line(keep_line_breaks: Bool = false, decoder: StringDecoder = UTF8StringDecoder): (String iso^, USize) ? =>
+  fun ref line[D: StringDecoder = UTF8StringDecoder](keep_line_breaks: Bool = false): (String iso^, USize) ? =>
     """
     Return a pair containing a \n or \r\n terminated line as a string, and the number
     of bytes consumed to produce the string.  By default the newline is not
@@ -250,7 +250,7 @@ class Reader
       end
     outb.truncate(len - trunc_len)
 
-    var out = recover String.from_iso_array(consume outb) end
+    var out = recover String.from_iso_array[D](consume outb) end
 
     (consume out, len)
 
