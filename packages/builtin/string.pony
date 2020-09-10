@@ -47,18 +47,14 @@ actor Main
   end
 ```
   """
-  var _size: USize
-  var _alloc: USize
-  var _ptr: Pointer[U8]
+  embed _arr: Array[U8] ref
 
   new create(len: USize = 0) =>
     """
     An empty string. Enough space for len bytes is reserved.
     """
-    _size = 0
-    _alloc = len.min(len.max_value() - 1) + 1
-    _ptr = Pointer[U8]._alloc(_alloc)
-    _set(0, 0)
+    _arr = Array[U8](len+1)
+    _arr.push_u8(0)
 
   new val from_array[D: StringDecoder = UTF8StringDecoder](data: Array[U8] val) =>
     """
@@ -69,14 +65,15 @@ actor Main
     """
     iftype D <: UTF8StringDecoder then
       _validate_encoding(data, D)
-      _size = data.size()
-      _alloc = data.space()
-      _ptr = data.cpointer()._unsafe()
+      _arr = Array[U8].from_cpointer(data.cpointer(), data.size(), data.space())
     else
       let utf8_encoded_bytes = recover _recode_byte_array(data, D) end
-      _size = utf8_encoded_bytes.size()
-      _alloc = utf8_encoded_bytes.space()
-      _ptr = utf8_encoded_bytes.cpointer()._unsafe()
+      _arr = Array[U8].from_cpointer(utf8_encoded_bytes.cpointer(),
+        utf8_encoded_bytes.size(),
+        utf8_encoded_bytes.space())
+    end
+    if _arr.space() > _arr.size() then
+      _arr.push_u8(0)
     end
 
   new iso from_iso_array[D: StringDecoder = UTF8StringDecoder](data: Array[U8] iso) =>
@@ -87,22 +84,22 @@ actor Main
     allocated.
     """
     iftype D <: UTF8StringDecoder then
-      _size = data.size()
-      _alloc = data.space()
+      let size' = data.size()
+      let space' = data.space()
       let d2 = recover
         let d1: Array[U8] ref = consume data
         _validate_encoding(d1, D)
         d1
       end
-      _ptr = (consume d2).cpointer()._unsafe()
+      _arr = Array[U8].from_cpointer((consume d2).cpointer(), size', space')
     else
       let utf8_encoded_bytes = recover _recode_byte_array(consume data, D) end
-      _size = utf8_encoded_bytes.size()
-      _alloc = utf8_encoded_bytes.space()
-      _ptr = utf8_encoded_bytes.cpointer()._unsafe()
+      _arr = Array[U8].from_cpointer(utf8_encoded_bytes.cpointer(),
+        utf8_encoded_bytes.size(),
+        utf8_encoded_bytes.space())
     end
-    if _alloc > _size then
-      _set(_size, 0)
+    if _arr.space() > _arr.size() then
+      _arr.push_u8(0)
     end
 
   new from_cpointer(str: Pointer[U8], len: USize, alloc: USize = 0) =>
@@ -114,14 +111,10 @@ actor Main
     unicode codepoints.
     """
     if str.is_null() then
-      _size = 0
-      _alloc = 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _arr = Array[U8].from_cpointer(Pointer[U8]._alloc(1), 1)
       _set(0, 0)
     else
-      _size = len
-      _alloc = alloc.max(_size.min(len.max_value() - 1))
-      _ptr = str
+      _arr = Array[U8].from_cpointer(str, len, alloc.max(len.min(len.max_value() - 1)))
     end
 
   new from_cstring(str: Pointer[U8]) =>
@@ -137,9 +130,7 @@ actor Main
     be UTF-8 encoded unicode codepoints.
     """
     if str.is_null() then
-      _size = 0
-      _alloc = 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _arr = Array[U8].from_cpointer(Pointer[U8]._alloc(1), 1)
       _set(0, 0)
     else
       var i: USize = 0
@@ -148,9 +139,7 @@ actor Main
         i = i + 1
       end
 
-      _size = i
-      _alloc = i + 1
-      _ptr = str
+      _arr = Array[U8].from_cpointer(str, i + 1)
     end
 
   new copy_cpointer(str: Pointer[U8] box, len: USize) =>
@@ -159,15 +148,12 @@ actor Main
     The pointer data must be UTF-8 encoded unicode codepoints.
     """
     if str.is_null() then
-      _size = 0
-      _alloc = 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _arr = Array[U8].from_cpointer(Pointer[U8]._alloc(1), 1)
       _set(0, 0)
     else
-      _size = len
-      _alloc = _size + 1
-      _ptr = Pointer[U8]._alloc(_alloc)
-      str._copy_to(_ptr, _alloc)
+      _arr = Array[U8].from_cpointer(Pointer[U8]._alloc(len + 1), len + 1)
+      str._copy_to(_arr._cpointer(), len)
+      _set(_arr.size(), 0)
     end
 
   new copy_cstring(str: Pointer[U8] box) =>
@@ -179,9 +165,7 @@ actor Main
     must be UTF-8 encoded unicode codepoints.
     """
     if str.is_null() then
-      _size = 0
-      _alloc = 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _arr = Array[U8].from_cpointer(Pointer[U8]._alloc(1), 1)
       _set(0, 0)
     else
       var i: USize = 0
@@ -190,10 +174,10 @@ actor Main
         i = i + 1
       end
 
-      _size = i
-      _alloc = i + 1
-      _ptr = Pointer[U8]._alloc(_alloc)
-      str._copy_to(_ptr, _alloc)
+      i = i + 1 // Add space for the string terminator
+
+      _arr = Array[U8].from_cpointer(Pointer[U8]._alloc(i), i)
+      str._copy_to(_arr._cpointer(), i)
     end
 
   new from_utf32(value: U32) =>
@@ -203,11 +187,12 @@ actor Main
     let byte_array = Array[U8](4)
     UTF8StringEncoder._add_encoded_bytes(byte_array, UTF8StringEncoder.encode(value))
 
-    _size = byte_array.size()
-    _alloc = _size + 1
-    _ptr = Pointer[U8]._alloc(_alloc)
-    byte_array._copy_to(_ptr, _size)
-    _set(_size, 0)
+    let size' = byte_array.size()
+    _arr = Array[U8].create(size' + 1)
+    for b in byte_array.values() do
+      _arr.push_u8(b)
+    end
+    _arr.push_u8(0)
 
   fun ref push_utf32(value: U32) =>
     """
@@ -216,18 +201,20 @@ actor Main
     """"
     push(value)
 
-  fun box _copy_to(ptr: Pointer[U8] ref, copy_len: USize,
-    from_offset: USize = 0, to_offset: USize = 0) =>
+  fun box _copy_to(ptr: Pointer[U8] ref,
+    copy_len: USize,
+    from_offset: USize = 0,
+    to_offset: USize = 0) =>
     """
     Copy copy_len characters from this to that at specified offsets.
     """
-    _ptr._offset(from_offset)._copy_to(ptr._offset(to_offset), copy_len)
+    _arr._copy_to(ptr, copy_len, from_offset, to_offset)
 
   fun cpointer(offset: USize = 0): Pointer[U8] tag =>
     """
     Returns a C compatible pointer to the underlying string allocation.
     """
-    _ptr._offset(offset)
+    _arr.cpointer(offset)
 
   fun cstring(): Pointer[U8] tag =>
     """
@@ -238,12 +225,12 @@ actor Main
     is copied into a new, null-terminated allocation.
     """
     if is_null_terminated() then
-      return _ptr
+      return _arr.cpointer()
     end
 
-    let ptr = Pointer[U8]._alloc(_size + 1)
-    _ptr._copy_to(ptr._unsafe(), _size)
-    ptr._update(_size, 0)
+    let ptr = Pointer[U8]._alloc(_arr.size() + 1)
+    _arr._copy_to(ptr, _arr.size())
+    ptr._update(_arr.size(), 0)
     ptr
 
   fun val array[E: StringEncoder val = UTF8StringEncoder](): Array[U8] val =>
@@ -253,17 +240,16 @@ actor Main
     (UTF-8). If the encoder doss not match, a new byte array is
     allocated and returned.
     """
-    recover
-      var rtrn_array: Array[U8]
-      iftype E <: UTF8StringEncoder then
-        rtrn_array = Array[U8].from_cpointer(_ptr._unsafe(), _size, _alloc)
-      else
-        rtrn_array = Array[U8](_size)
+    iftype E <: UTF8StringEncoder then
+      return _arr
+    else
+      recover
+        var rtrn_array = Array[U8](byte_size())
         for c in values() do
             UTF8StringEncoder._add_encoded_bytes(rtrn_array, E.encode(c))
         end
+        rtrn_array
       end
-      rtrn_array
     end
 
   fun iso iso_array[E: StringEncoder val = UTF8StringEncoder](): Array[U8] iso^ =>
@@ -273,32 +259,39 @@ actor Main
     (UTF-8). If the encoder doss not match, a new byte array is
     allocated and returned.
     """
-    recover
-      var rtrn_array: Array[U8]
       iftype E <: UTF8StringEncoder then
-        rtrn_array = Array[U8].from_cpointer(_ptr._unsafe(), _size, _alloc)
+        recover
+          var rtrn_array = Array[U8](byte_size())
+          for b in (consume this).bytes() do
+            rtrn_array.push_u8(b)
+          end
+          rtrn_array
+        end
       else
-        rtrn_array = Array[U8](_size)
-        for c in (consume this).values() do
-          UTF8StringEncoder._add_encoded_bytes(rtrn_array, E.encode(c))
+        recover
+          var rtrn_array = Array[U8](size()*4)
+          for c in (consume this).values() do
+            UTF8StringEncoder._add_encoded_bytes(rtrn_array, E.encode(c))
+          end
+          rtrn_array.compact()
+          rtrn_array
         end
       end
-      rtrn_array
-    end
 
   fun size(): USize =>
     """
     Returns the number of unicode codepoints in the string.
     """
-    if _size == 0 then
+    if _arr.size() == 0 then
       return 0
     end
 
     var i = USize(0)
     var n = USize(0)
 
-    while i < _size do
-      if (_ptr._apply(i) and 0xC0) != 0x80 then
+    let array_size = byte_size()
+    while i < array_size do
+      if (_arr(i) and 0xC0) != 0x80 then
         n = n + 1
       end
 
@@ -312,16 +305,16 @@ actor Main
     Returns the number of unicode code points in the string between the two
     offsets. Index range [`from` .. `to`) is half-open.
     """
-    if _size == 0 then
+    if _arr.size() == 0 then
       return 0
     end
 
     var i = _offset_to_index(from)
-    let j = _offset_to_index(to).min(_size)
+    let j = _offset_to_index(to).min(byte_size())
     var n = USize(0)
 
     while i < j do
-      if (_ptr._apply(i) and 0xC0) != 0x80 then
+      if (_arr(i) and 0xC0) != 0x80 then
         n = n + 1
       end
 
@@ -338,8 +331,9 @@ actor Main
     var i = USize(0)
     var n = USize(0)
 
-    while (n <= offset) and (i < _size) do
-      if (_ptr._apply(i) and 0xC0) != 0x80 then
+    let array_size = byte_size()
+    while (n <= offset) and (i < array_size) do
+      if (_arr(i) and 0xC0) != 0x80 then
         n = n + 1
       end
 
@@ -354,7 +348,7 @@ actor Main
     """
     Returns the size of the string in encoded bytes.
     """
-    _size
+    _arr.size() - (if is_null_terminated() then 1 else 0 end)
 
   fun space(): USize =>
     """
@@ -362,7 +356,7 @@ actor Main
     Space is measured in bytes, and space for bytes does not imply space for
     the same number of unicode characters
     """
-    if is_null_terminated() then _alloc - 1 else _alloc end
+    if is_null_terminated() then _arr.space() - 1 else _arr.space() end
 
   fun ref reserve(len: USize) =>
     """
@@ -370,35 +364,14 @@ actor Main
     the same number of unicode characters. An additional byte will be reserved
     for the null terminator.
     """
-    if _alloc <= len then
-      let max = len.max_value() - 1
-      let min_alloc = len.min(max) + 1
-      if min_alloc <= (max / 2) then
-        _alloc = min_alloc.next_pow2()
-      else
-        _alloc = min_alloc.min(max)
-      end
-      _ptr = _ptr._realloc(_alloc)
-    end
+    _arr.reserve(len)
 
   fun ref compact() =>
     """
     Try to remove unused space, making it available for garbage collection. The
     request may be ignored.
     """
-    if (_size + 1) <= 512 then
-      if (_size + 1).next_pow2() != _alloc.next_pow2() then
-        _alloc = (_size + 1).next_pow2()
-        let old_ptr = _ptr = Pointer[U8]._alloc(_alloc)
-        old_ptr._copy_to(_ptr, _size)
-        _set(_size, 0)
-      end
-    elseif (_size + 1) < _alloc then
-      _alloc = (_size + 1)
-      let old_ptr = _ptr = Pointer[U8]._alloc(_alloc)
-      old_ptr._copy_to(_ptr, _size)
-      _set(_size, 0)
-    end
+    _arr.compact()
 
   fun ref recalc() =>
     """
@@ -408,23 +381,23 @@ actor Main
     """
     var s: USize = 0
 
-    while (s < _alloc) and (_ptr._apply(s) > 0) do
+    while (s < _arr.space()) and (_arr(s) > 0) do
       s = s + 1
     end
 
-    if s != _alloc then
-      _size = s
+    if s != _arr.space() then
+      _arr.truncate(s)
     end
 
   fun ref resize(len: USize) =>
     """
     Increase the size of a string to the give len in bytes. This is an
-    unsafe operation, and should only be used when string's _ptr has
+    unsafe operation, and should only be used when string's _arr has
     been manipulated through a FFI call and the string size is known.
     """
-    if len > _size then
-      _size = len
-      _set(_size, 0)
+    if len > byte_size() then
+      _arr.undefined[U8](len)
+      _arr.push_u8(0)
     end
 
   fun ref truncate(len: USize) =>
@@ -434,7 +407,7 @@ actor Main
     Truncate does not work with a len that is larger than the string size.
     """
     let byte_offset = _offset_to_index(len.isize())
-    if byte_offset <= _size then
+    if byte_offset <= byte_size() then
       _truncate(byte_offset)
     end
 
@@ -445,9 +418,9 @@ actor Main
 
     Note that memory is not freed by this operation.
     """
-    _size = len.min(_size)
-    if _size < _alloc then
-      _set(_size, 0)
+    _arr.truncate(len)
+    if _arr.size() < _arr.space() then
+      _arr.push_u8(0)
     end
 
   fun ref trim_in_place(from: USize = 0, to: USize = -1) =>
@@ -460,9 +433,9 @@ actor Main
     let offset = _offset_to_index(from.isize())
 
     if (to > to.isize().max_value().usize()) then
-      last = _size
+      last = byte_size()
     else
-      if (offset < _size) and (to > from) then
+      if (offset < byte_size()) and (to > from) then
         last = _offset_to_index((to - from).isize(), offset)
       else
         last = offset
@@ -472,25 +445,7 @@ actor Main
 
   fun ref _trim_in_place(from: USize, to: USize) =>
 
-    let size' = to - from
-
-    // use the new size' for alloc if we're not including the last used byte
-    // from the original data and only include the extra allocated bytes if
-    // we're including the last byte.
-    _alloc = if to == _size then _alloc - from else size' end
-
-    _size = size'
-
-    // if _alloc == 0 then we've trimmed all the memory originally allocated.
-    // if we do _ptr._offset, we will spill into memory not allocated/owned
-    // by this string and could potentially cause a segfault if we cross
-    // a pagemap boundary into a pagemap address that hasn't been allocated
-    // yet when `reserve` is called next.
-    if _alloc == 0 then
-      _ptr = Pointer[U8]
-    else
-      _ptr = _ptr._offset(from)
-    end
+    _arr.trim_in_place(from, to)
 
   fun val trim(from: USize = 0, to: USize = -1): String val =>
     """
@@ -501,9 +456,9 @@ actor Main
     var last: USize = 0
     let offset = _offset_to_index(from.isize())
     if (to > to.isize().max_value().usize()) then
-      last = _size
+      last = byte_size()
     else
-      if (offset < _size) and (to > from) then
+      if (offset < byte_size()) and (to > from) then
         last = _offset_to_index((to - from).isize(), offset)
       else
         last = offset
@@ -516,10 +471,10 @@ actor Main
       // use the new size' for alloc if we're not including the last used byte
       // from the original data and only include the extra allocated bytes if
       // we're including the last byte.
-      let alloc = if last == _size then _alloc - offset else size' end
+      let alloc = if last == _arr.size() then _arr.space() - offset else size' end
 
       if size' > 0 then
-        from_cpointer(_ptr._offset(offset)._unsafe(), size', alloc)
+        from_cpointer(_arr.cpointer(offset), size', alloc)
       else
         create()
       end
@@ -536,21 +491,9 @@ actor Main
     The operation does not allocate a new string pointer nor copy elements.
     """
     let split_point_index = _offset_to_index(split_point.isize())
-    let start_ptr = cpointer(split_point)
-    let size' = _size - _size.min(split_point_index)
-    let alloc = _alloc - _size.min(split_point_index)
+    (let left: Array[U8] iso, let right: Array[U8] iso) = _arr.chop(split_point_index)
 
-    _trim_in_place(0, split_point_index)
-
-    let right = recover
-      if size' > 0 then
-        from_cpointer(start_ptr._unsafe(), size', alloc)
-      else
-        create()
-      end
-    end
-
-    (consume this, consume right)
+    (String.from_iso_array(consume left), String.from_iso_array(consume right))
 
   fun iso unchop(b: String iso): ((String iso^, String iso^) | String iso^) =>
     """
@@ -562,36 +505,10 @@ actor Main
     cannot be unchopped it returns both strings without modifying them.
     The operation does not allocate a new string pointer nor copy elements.
     """
-    if _size == 0 then
-      return consume b
-    end
-
-    if b._size == 0 then
-      return consume this
-    end
-
-    (let unchoppable, let a_left) =
-      if (_size == _alloc) and (cpointer(_size) == b.cpointer()) then
-        (true, true)
-      elseif (b._size == b.space()) and (b.cpointer(b._size) == cpointer())
-        then
-        (true, false)
-      else
-        (false, false)
-      end
-
-    if not unchoppable then
-      return (consume this, consume b)
-    end
-
-    if a_left then
-      _alloc = _alloc + b._alloc
-      _size = _size + b._size
-      consume this
-    else
-      b._alloc = b._alloc + _alloc
-      b._size = b._size + _size
-      consume b
+    match _arr.unchop(b._arr)
+    | (let l: Array[U8] iso, let r: Array[U8] iso) =>
+      (String.from_iso_array(l), String.from_iso_array(r))
+    | let rtrn: Array[U8] iso => String.from_iso_array(rtrn)
     end
 
   fun is_null_terminated(): Bool =>
@@ -603,7 +520,7 @@ actor Main
     which may be present earlier in the content of the string.
     If you need a null-terminated copy of this string, use the clone method.
     """
-    (_alloc > 0) and (_alloc != _size) and (_ptr._apply(_size) == 0)
+    (_arr.space() > 0) and (_arr.space() != _arr.size()) and (_arr(_arr.size()) == 0)
 
   fun _codepoint(byte_offset: USize): (U32, U8) ? =>
     """
@@ -615,8 +532,8 @@ actor Main
     """
     let err: (U32, U8) = (0xFFFD, 1)
 
-    if byte_offset >= _size then error end
-    let c = _ptr._apply(byte_offset)
+    if byte_offset >= byte_size() then error end
+    let c = _arr(byte_offset)
 
     if c < 0x80 then
       // 1-byte
@@ -626,11 +543,11 @@ actor Main
       err
     elseif c < 0xE0 then
       // 2-byte
-      if (byte_offset + 1) >= _size then
+      if (byte_offset + 1) >= byte_size() then
         // Not enough bytes.
         err
       else
-        let c2 = _ptr._apply(byte_offset + 1)
+        let c2 = _arr(byte_offset + 1)
         if (c2 and 0xC0) != 0x80 then
           // Not a continuation byte.
           err
@@ -640,12 +557,12 @@ actor Main
       end
     elseif c < 0xF0 then
       // 3-byte.
-      if (byte_offset + 2) >= _size then
+      if (byte_offset + 2) >= byte_size() then
         // Not enough bytes.
         err
       else
-        let c2 = _ptr._apply(byte_offset + 1)
-        let c3 = _ptr._apply(byte_offset + 2)
+        let c2 = _arr(byte_offset + 1)
+        let c3 = _arr(byte_offset + 2)
         if
           // Not continuation bytes.
           ((c2 and 0xC0) != 0x80) or
@@ -660,13 +577,13 @@ actor Main
       end
     elseif c < 0xF5 then
       // 4-byte.
-      if (byte_offset + 3) >= _size then
+      if (byte_offset + 3) >= byte_size() then
         // Not enough bytes.
         err
       else
-        let c2 = _ptr._apply(byte_offset + 1)
-        let c3 = _ptr._apply(byte_offset + 2)
-        let c4 = _ptr._apply(byte_offset + 3)
+        let c2 = _arr(byte_offset + 1)
+        let c3 = _arr(byte_offset + 2)
+        let c4 = _arr(byte_offset + 3)
         if
           // Not continuation bytes.
           ((c2 and 0xC0) != 0x80) or
@@ -692,14 +609,14 @@ actor Main
 
   fun _next_char(index: USize): USize =>
     var i = index + 1
-    while (i < _size) and ((_ptr._apply(i) and 0xC0) == 0x80) do
+    while (i < byte_size()) and ((_arr(i) and 0xC0) == 0x80) do
       i = i + 1
     end
     i
 
   fun _previous_char(index: USize): USize =>
     var i = index - 1
-    while (i > 0) and ((_ptr._apply(i) and 0xC0) == 0x80) do
+    while (i > 0) and ((_arr(i) and 0xC0) == 0x80) do
       i = i - 1
     end
     i
@@ -715,7 +632,7 @@ actor Main
     """
     Change the i-th character. Raise an error if the index is out of bounds.
     """
-    if i < _size then
+    if i < byte_size() then
       (let c, let sz) = _codepoint(i)?
       _cut_in_place(i, i+sz.usize())
       _insert_in_place(i, String.from_utf32(value))
@@ -743,11 +660,10 @@ actor Main
     Returns a copy of the string. The resulting string is
     null-terminated even if the original is not.
     """
-    let len = _size
+    let len = byte_size()
     let str = recover String(len) end
-    _ptr._copy_to(str._ptr._unsafe(), len)
-    str._size = len
-    str._set(len, 0)
+    _arr._copy_to(str._arr.cpointer(), len)
+    str._arr.push_u8(0)
     str
 
   fun repeat_str(num: USize = 1, sep: String = ""): String iso^ =>
@@ -756,12 +672,12 @@ actor Main
     separator added inbetween repeats.
     """
     var c = num
-    var str = recover String((_size + sep._size) * c) end
+    var str = recover String((byte_size() + sep.byte_size()) * c) end
 
     while c > 0 do
       c = c - 1
       str = (consume str)._append(this)
-      if (sep._size > 0) and (c != 0) then
+      if (sep.byte_size > 0) and (c != 0) then
         str = (consume str)._append(sep)
       end
     end
@@ -781,7 +697,7 @@ actor Main
     occurrence of s or s is empty.
     """
     let index = _offset_to_index(offset)
-    if index < _size then
+    if index < byte_size() then
       (let offset', _) = _find(s, _offset_to_index(offset), nth)?
       return offset + offset'
     end
@@ -798,10 +714,12 @@ actor Main
     var i_char = ISize(0)
     var steps = nth + 1
 
-    while i_byte < _size do
+    let byte_size' = byte_size()
+    let s_size' = s.byte_size()
+    while i_byte < byte_size' do
       var j_byte: USize = 0
 
-      let same = while j_byte < s._size do
+      let same = while j_byte < s_size' do
         (let this_char, let this_sz) = _codepoint(i_byte + j_byte)?
         (let that_char, let that_sz) = s._codepoint(j_byte)?
         if this_char != that_char then
@@ -829,20 +747,22 @@ actor Main
     Raise an error if there is no n-th occurrence of `s` or `s` is empty.
     """
     var index = _offset_to_index(offset)
-    if (index >= _size) or (s._size > index) then
+    if (index >= byte_size()) or (s.byte_size() > index) then
       error
     end
 
-    var i_byte = (index + 1) - s._size
+    var i_byte = (index + 1) - s.byte_size()
     var i_char = if offset < 0 then size().isize() + (offset + 1) else offset + 1 end
     i_char = i_char - s.size().isize()
 
     var steps = nth + 1
 
-    while i_byte < _size do
+    let byte_size' = byte_size()
+    let s_size' = s.byte_size()
+    while i_byte < byte_size' do
       var j_byte: USize = 0
 
-      let same = while j_byte < s._size do
+      let same = while j_byte < s_size' do
         (let this_char, let this_sz) = _codepoint(i_byte + j_byte)?
         (let that_char, let that_sz) = s._codepoint(j_byte)?
         if this_char != that_char then
@@ -870,10 +790,10 @@ actor Main
     var i_byte = _offset_to_index(offset)
     var steps = nth + 1
 
-    while (i_byte + s._size) <= _size do
+    while (i_byte + s.byte_size) <= byte_size() do
       var j_byte: USize = 0
 
-      let same = while j_byte < s._size do
+      let same = while j_byte < s.byte_size() do
         try
           (let this_char, let this_sz) = _codepoint(i_byte + j_byte)?
           (let that_char, let that_sz) = s._codepoint(j_byte)?
@@ -901,7 +821,7 @@ actor Main
     """
     Counts the non-overlapping occurrences of s in the string.
     """
-    let j_byte = _size - s._size
+    let j_byte = byte_size() - s.byte_size()
 
     if j_byte < 0 then
       return 0
@@ -915,7 +835,7 @@ actor Main
     try
       while k_byte <= j_byte do
         (_, let k_byte') = _find(s, k_byte, 0)?
-        k_byte = k_byte + k_byte' + s._size
+        k_byte = k_byte + k_byte' + s.byte_size()
         i = i + 1
       end
     end
@@ -928,8 +848,8 @@ actor Main
     """
     let i_byte = _offset_to_index(offset)
 
-    if (i_byte + s._size) <= _size then
-      @memcmp(_ptr._offset(i_byte), s._ptr, s._size) == 0
+    if (i_byte + s._size) <= _arr.size() then
+      @memcmp(_arr.cpointer(i_byte), s._arr.cpointer(), s.byte_size()) == 0
     else
       false
     end
@@ -944,7 +864,7 @@ actor Main
     var len_counter = len
     var byte_len = USize(0)
     try
-      while (len_counter > 0) and ((byte_offset + byte_len) < _size) do
+      while (len_counter > 0) and ((byte_offset + byte_len) < _arr.size()) do
         (_, let sz) = _codepoint(byte_offset + byte_len) ?
         len_counter = len_counter - 1
         byte_len = byte_len + sz.usize()
@@ -959,13 +879,9 @@ actor Main
     """
     Delete len bytes at the supplied offset, compacting the string in place.
     """
-    let i = offset
-
-    if i < _size then
-      let n = len.min(_size - i)
-      _size = _size - n
-      _ptr._offset(i)._delete(n, _size - i)
-      _set(_size, 0)
+    if offset < _arr.size() then
+      _arr.delete(offset, len)
+      _set(_arr.size(), 0)
     end
 
   fun substring(from: ISize, to: ISize = ISize.max_value()): String iso^ =>
@@ -978,17 +894,13 @@ actor Main
     `trim_in_place`.
     """
     let start = _offset_to_index(from)
-    let finish = _offset_to_index(to).min(_size)
+    let finish = _offset_to_index(to).min(_arr.size())
     _substring(start, finish)
 
   fun _substring(start: USize, finish: USize): String iso^ =>
-    if (start < _size) and (start < finish) then
+    if (start < _arr.size()) and (start < finish) then
       let len = finish - start
-      let str = recover String(len) end
-      _ptr._offset(start)._copy_to(str._ptr._unsafe(), len)
-      str._size = len
-      str._set(len, 0)
-      str
+      recover String.copy_cpointer(_arr.cpointer(start), len) end
     else
       recover String end
     end
@@ -1008,8 +920,8 @@ actor Main
     """
     var i: USize = 0
 
-    while i < _size do
-      let c = _ptr._apply(i)
+    while i < _arr.size() do
+      let c = _arr(i)
 
       if (c and 0x80) == 0 then
           if (c >= 0x41) and (c <= 0x5A) then
@@ -1034,8 +946,8 @@ actor Main
     """
     var i: USize = 0
 
-    while i < _size do
-      let c = _ptr._apply(i)
+    while i < _arr.size() do
+      let c = _arr(i)
 
       if (c and 0x80) == 0 then
         if (c >= 0x61) and (c <= 0x7A) then
@@ -1057,19 +969,35 @@ actor Main
     """
     Reverses the character order in the string.
     """
-    if _size > 1 then
+    if _arr.size() > 1 then
       var i: USize = 0
-      var j = _size
-      reserve(_size + 1)
+      var j = _previous_char(byte_size())
+      var buf = Array[U8](4)
+      reserve(_arr.size() + 1)
 
-      while i < _size do
+      while i < j do
         try
-          (let c, let sz) = _codepoint(0)?
-          j = j - sz.usize()
-          @memmove(_ptr.usize(), _ptr.usize() + sz.usize(), j)
-          let s = String.from_utf32(c)
-          s._ptr._copy_to(_ptr._offset(j), s._size)
-          i = i + sz.usize()
+          (let c, let sz) = _codepoint(i)?
+          (let c1, let sz1) = _codepoint(j)
+          var push_cntr = sz
+          while push_cntr > 0 do
+            push_cntr = push_cntr - 1
+            buf.push(_arr(i+push_cntr))
+            _arr.delete(i+push_cntr)
+          end
+          push_cntr = sz1
+          while push_cntr > 0 do
+            push_cntr = push_cntr - 1
+            _arr.insert(i, _arr(j+push_cntr))
+            _arr.delete(j+push_cntr)
+          end
+          push_cntr = buf.size()
+          while push_cntr > 0 do
+            push_cntr = push_cntr - 1
+            _arr.insert(j, buf.pop())
+          end
+          i = i + sz
+          j = _previous_char(j)
         else
           return
         end
@@ -1081,9 +1009,8 @@ actor Main
     Push a character onto the end of the string.
     """
     let encoded = UTF8StringEncoder.encode(value)
-    let i = _size
-    _size = _size + encoded._1
-    reserve(_size)
+    let i = byte_size()
+    reserve(_arr.size() + encoded._1)
     _set(i, (encoded._2 and 0xFF).u8())
     if encoded._1 > 1 then
       _set(i + 1, ((encoded._2 >> 8) and 0xFF).u8())
@@ -1094,16 +1021,16 @@ actor Main
         end
       end
     end
-    _set(_size, 0)
+    _set(_arr.size(), 0)
 
   fun ref pop(): U32 ? =>
     """
     Removes a character from the end of the string.
     """
-    if _size > 0 then
+    if _arr.size() > 0 then
       let i = _offset_to_index(-1)
       (let c, let sz) = _codepoint(i)?
-      _delete(_size - sz.usize(), sz.usize())
+      _delete(byte_size() - sz.usize(), sz.usize())
       c
     else
       error
@@ -1117,14 +1044,13 @@ actor Main
       _insert_in_place(0, String.from_utf32(value))
     else
       _set(0, 0)
-      _size = 0
     end
 
   fun ref shift(): U32 ? =>
     """
     Removes a character from the beginning of the string.
     """
-    if _size > 0 then
+    if _arr.size() > 0 then
       (let c, let sz) = _codepoint(0)?
       _cut_in_place(0, sz.usize())
       c
@@ -1144,15 +1070,12 @@ actor Main
 
     match seq
     | let s: (String box) =>
-      let index = if offset > 0 then _offset_to_index(offset.isize()) else 0 end
-      let copy_len = s._size - index
-      reserve(_size + copy_len)
-      s._copy_to(_ptr, copy_len, index, _size)
-      _size = _size + copy_len
-      _set(_size, 0)
+      let index = if offset > 0 then s._offset_to_index(offset.isize()) else 0 end
+      let copy_len = s._offset_to_index(offset + len) - index
+      _arr.append(s._arr, index, copy_len)
     else
       let copy_len = len.min(seq.size() - offset)
-      reserve(_size + (copy_len * 4))
+      reserve(_arr.size() + (copy_len * 4))
       let cap = copy_len + offset
       var i = USize(0)
 
@@ -1227,8 +1150,8 @@ actor Main
     """
     Truncate the string to zero length.
     """
-    _set(0, 0)
-    _size = 0
+    _arr.clear()
+    _arr.push(0)
 
   fun insert(offset: ISize, that: String): String iso^ =>
     """
@@ -1248,12 +1171,12 @@ actor Main
     _insert_in_place(index, that)
 
   fun ref _insert_in_place(index: USize, that: String box) =>
-    reserve(_size + that._size)
-    @memmove(_ptr.usize() + index + that._size,
-      _ptr.usize() + index, _size - index)
-    that._ptr._copy_to(_ptr._offset(index), that._size)
-    _size = _size + that._size
-    _set(_size, 0)
+    reserve(_arr.size() + that.byte_size())
+    var i = index
+    for b in that._arr.values() do
+      _arr.insert(i, b)
+      i = i + 1
+    end
 
   fun ref insert_utf32(offset: ISize, value: U32) =>
     """
@@ -1290,18 +1213,9 @@ actor Main
     let start = from
     let finish = to
 
-    if (start < _size) and (start < finish) and (finish <= _size) then
+    if (start < byte_size()) and (start < finish) and (finish <= byte_size()) then
       let fragment_len = finish - start
-      let new_size = _size - fragment_len
-      var i = start
-
-      while i < new_size do
-        _set(i, _ptr._apply(i + fragment_len))
-        i = i + 1
-      end
-
-      _size = _size - fragment_len
-      _set(_size, 0)
+      _arr.delete(start, fragment_len)
     end
 
   fun ref remove(s: String box): USize =>
@@ -1386,14 +1300,14 @@ actor Main
     let result = recover Array[String] end
     var current = USize(0)
 
-    while ((result.size() + 1) < n) and (current < _size) do
+    while ((result.size() + 1) < n) and (current < _arr.size()) do
       try
         (_, let delim_start) = _find(delim, current, 0)?
         result.push(_substring(current, current + delim_start))
         current = current + (delim_start + delim._size)
       else break end
     end
-    result.push(_substring(current, _size))
+    result.push(_substring(current, _arr.size()))
     consume result
 
   fun split(delim: String = " \t\v\f\r\n", n: USize = 0): Array[String] iso^ =>
@@ -1427,7 +1341,7 @@ actor Main
     """
     let result = recover Array[String] end
 
-    if _size > 0 then
+    if _arr.size() > 0 then
       let chars = Array[U32](delim.size())
 
       for rune in delim.values() do
@@ -1439,7 +1353,7 @@ actor Main
       var occur = USize(0)
 
       try
-        while i < _size do
+        while i < _arr.size() do
           (let c, let len) = _codepoint(i)?
 
           if chars.contains(c) then
@@ -1460,7 +1374,7 @@ actor Main
         end
 
         // Add all remaining bytes to the current string.
-        while i < _size do
+        while i < _arr.size() do
           (let c, let len) = _codepoint(i)?
           cur.push(c)
           i = i + len.usize()
@@ -1475,7 +1389,7 @@ actor Main
     """
     Remove all leading and trailing characters from the string that are in s.
     """
-      var i = _size - 1
+      var i = _arr.size() - 1
     this .> lstrip(s) .> rstrip(s)
 
   fun ref rstrip(s: String box = " \t\v\f\r\n") =>
@@ -1483,10 +1397,10 @@ actor Main
     Remove all trailing characters within the string that are in s. By default,
     trailing whitespace is removed.
     """
-    if _size > 0 then
+    if _arr.size() > 0 then
       let chars = Array[U32](s.size())
-      var i = _size - 1
-      var truncate_at = _size
+      var i = _arr.size() - 1
+      var truncate_at = _arr.size()
 
       for rune in s.values() do
         chars.push(rune)
@@ -1515,7 +1429,7 @@ actor Main
     Remove all leading characters within the string that are in s. By default,
     leading whitespace is removed.
     """
-    if _size > 0 then
+    if _arr.size() > 0 then
       let chars = Array[U32](s.size())
       var i = USize(0)
 
@@ -1523,7 +1437,7 @@ actor Main
         chars.push(rune)
       end
 
-      while i < _size do
+      while i < _arr.size() do
         try
           (let c, let len) = _codepoint(i)?
           if not chars.contains(c) then
@@ -1541,21 +1455,14 @@ actor Main
     end
 
   fun iso _append(s: String box): String iso^ =>
-    let len = _size + s._size
-    reserve(len)
-    if s.is_null_terminated() then
-      s._copy_to(_ptr._unsafe(), s._size + 1, 0, _size)
-    else
-      s._copy_to(_ptr._unsafe(), s._size, 0, _size)
-    end
-    _size = len
+    _arr.append(s._arr)
     consume this
 
   fun add(that: String box): String =>
     """
     Return a string that is a concatenation of this and that.
     """
-    let len = _size + that._size
+    let len = byte_size() + that.byte_size() + 1
     let s = recover String(len) end
     (consume s)._append(this)._append(that)
 
@@ -1580,7 +1487,7 @@ actor Main
     """
     Lexically compare two strings.
     """
-    compare_sub(that, _size.max(that._size))
+    compare_sub(that, _arr.size().max(that._size))
 
   fun compare_sub(
     that: String box,
@@ -1610,11 +1517,11 @@ actor Main
     """
     var j: USize = _offset_to_index(offset)
     var k: USize = that._offset_to_index(that_offset)
-    var i = n.min((_size - j).max(that._size - k))
+    var i = n.min((_arr.size() - j).max(that._size - k))
 
     while i > 0 do
       // this and that are equal up to this point
-      if j >= _size then
+      if j >= _arr.size() then
         // this is shorter
         return Less
       elseif k >= that._size then
@@ -1647,8 +1554,8 @@ actor Main
     """
     Returns true if the two strings have the same contents.
     """
-    if _size == that._size then
-      @memcmp(_ptr, that._ptr, _size) == 0
+    if byte_size() == that.byte_size() then
+      @memcmp(_arr.cpointer(), that._arr.cpointer(), byte_size()) == 0
     else
       false
     end
@@ -1658,7 +1565,7 @@ actor Main
     Returns true if this is lexically less than that. Needs to be made UTF-8
     safe.
     """
-    let len = _size.min(that._size)
+    let len = byte_size().min(that.byte_size())
     var i: USize = 0
 
     try
@@ -1673,7 +1580,7 @@ actor Main
         end
         i = i + this_sz.usize()
       end
-      _size < that._size
+      byte_size() < that.byte_size()
     else
       return false // This should never happen
     end
@@ -1683,7 +1590,7 @@ actor Main
     Returns true if this is lexically less than or equal to that. Needs to be
     made UTF-8 safe.
     """
-    let len = _size.min(that._size)
+    let len = byte_size().min(that.byte_size())
     var i: USize = 0
 
     try
@@ -1698,7 +1605,7 @@ actor Main
         end
         i = i + this_sz.usize()
       end
-      _size <= that._size
+      byte_size() <= that.byte_size()
     else
       return false // This should never happen
     end
@@ -1734,7 +1641,7 @@ actor Main
     """
     (let v, let d) = read_int[A](0, base)?
     // Check the whole string is used
-    if (d == 0) or (d.usize() != _size) then error end
+    if (d == 0) or (d.usize() != byte_size()) then error end
     v
 
   fun read_int[A: ((Signed | Unsigned) & Integer[A] val)](
@@ -1759,7 +1666,7 @@ actor Main
     var had_digit = false
 
     // Check for leading minus
-    let minus = (index < _size) and (_codepoint(index)?._1 == '-')
+    let minus = (index < byte_size()) and (_codepoint(index)?._1 == '-')
     if minus then
       if A(-1) > A(0) then
         // We're reading an unsigned type, negative not allowed, int not found
@@ -1773,7 +1680,7 @@ actor Main
     index = index + base_chars
 
     // Process characters
-    while index < _size do
+    while index < byte_size() do
       (let c, let sz) = _codepoint(index)?
       let char: A = A(0).from[U32](c)
       if char == '_' then
@@ -1833,13 +1740,14 @@ actor Main
     end
 
     // Determine base from prefix
-    if (index + 2) >= _size then
+    if (index + 2) >= byte_size() then
       // Not enough characters, must be decimal
       return (10, 0)
     end
 
-    let lead_char = _ptr._apply(index)
-    let base_char = _ptr._apply(index + 1) and not 0x20
+    (let lead_char, let lead_sz) = _codepoint(index)?
+    (var base_char, let base_sz) = _codepoint(index + lead_sz)?
+    base_char = base_char and not 0x20
 
     if (lead_char == '0') and (base_char == 'B') then
       return (2, 2)
@@ -1853,14 +1761,14 @@ actor Main
     (10, 0)
 
   fun _offset_to_index(offset: ISize, start: USize = 0): USize =>
-    let limit: USize = _size
+    let limit: USize = byte_size()
     var inc: ISize = 1
     var n = ISize(0)
-    var i = start.min(_size)
+    var i = start.min(byte_size())
     if offset < 0 then
       inc = -1
       if start == 0 then
-        i = _size - 1
+        i = byte_size() - 1
       else
         i = start - 1
       end
@@ -1868,7 +1776,7 @@ actor Main
 
     while (((inc > 0) and (i < limit) and (n <= offset)) or
            ((inc < 0) and (i >= 0) and (n > offset))) do
-      if (_ptr._apply(i.usize()) and 0xC0) != 0x80 then
+      if (_arr(i.usize()) and 0xC0) != 0x80 then
         n = n + inc
       end
 
@@ -1905,12 +1813,12 @@ actor Main
     ```
     """
     let index = _offset_to_index(offset)
-    if index < _size then
+    if index < byte_size() then
       @pony_os_clear_errno()
       var endp: Pointer[U8] box = Pointer[U8]
-      let res = @strtof(_ptr._offset(index), addressof endp)
+      let res = @strtof(_arr.cpointer(index), addressof endp)
       let errno: I32 = @pony_os_errno()
-      if (errno != 0) or (endp != _ptr._offset(_size)) then
+      if (errno != 0) or (endp != _arr.cpointer(byte_size())) then
         error
       else
         res
@@ -1938,12 +1846,12 @@ actor Main
     ```
     """
     let index = _offset_to_index(offset)
-    if index < _size then
+    if index < byte_size() then
       @pony_os_clear_errno()
       var endp: Pointer[U8] box = Pointer[U8]
-      let res = @strtod(_ptr._offset(index), addressof endp)
+      let res = @strtod(_arr.cpointer(index), addressof endp)
       let errno: I32 = @pony_os_errno()
-      if (errno != 0) or (endp != _ptr._offset(_size)) then
+      if (errno != 0) or (endp != _arr.cpointer(byte_size())) then
         error
       else
         res
@@ -1953,10 +1861,10 @@ actor Main
     end
 
   fun hash(): USize =>
-    @ponyint_hash_block[USize](_ptr, _size)
+    @ponyint_hash_block[USize](_arr.cpointer(), byte_size())
 
   fun hash64(): U64 =>
-    @ponyint_hash_block64[U64](_ptr, _size)
+    @ponyint_hash_block64[U64](_arr.cpointer(), byte_size())
 
   fun string(): String iso^ =>
     clone()
@@ -1973,17 +1881,17 @@ actor Main
     """
     StringRunes(this)
 
-  fun bytes(encoder: StringEncoder = UTF8StringEncoder): Iterator[U8] =>
-    StringBytes(this, encoder)
+  fun bytes[E: StringEncoder = UTF8StringEncoder](): Iterator[U8] =>
+    StringBytes[E](this)
 
   fun _byte(i: USize): U8 =>
-    _ptr._apply(i)
+    _arr(i)
 
-  fun ref _set(i: USize, value: U8): U8 =>
+  fun ref _set(i: USize, value: U8): U8 ? =>
     """
     Unsafe update, used internally.
     """
-    _ptr._update(i, value)
+    _arr.update(i, value)
 
   fun tag _validate_encoding(data: Array[U8] box, decoder: StringDecoder) =>
     let byte_consumer = {(codepoint: U32) => None} ref
@@ -2033,21 +1941,19 @@ class StringRunes is Iterator[U32]
     _i = _i + len.usize()
     rune
 
-class StringBytes is Iterator[U8]
+class StringBytes[E: StringEncoder = UTF8StringEncoder] is Iterator[U8]
   let _string: String box
-  let _encoder: StringEncoder val
   var _i: USize = 0
   var _byte_pos: USize = 0
 
-  new create(string: String box, encoder: StringEncoder) =>
+  new _create(string: String box) =>
     _string = string
-    _encoder = encoder
 
   fun has_next(): Bool =>
     _i < _string.byte_size()
 
   fun ref next(): U8 ? =>
-    if  _encoder is UTF8StringEncoder then
+    iftype E <: UTF8StringEncoder then
       if _i < _string.byte_size() then
         let b = _string._byte(_i)
         _i = _i + 1
@@ -2057,7 +1963,7 @@ class StringBytes is Iterator[U8]
       end
     else
       (let cp, let sz) = _string._codepoint(_i)?
-      (let byte_size, let byte_u32) = _encoder.encode(cp)
+      (let byte_size, let byte_u32) = E.encode(cp)
       if _byte_pos == byte_size then
         _i = _i + sz.usize()
         _byte_pos = 0

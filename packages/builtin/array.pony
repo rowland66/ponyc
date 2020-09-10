@@ -121,7 +121,7 @@ class Array[A] is Seq[A]
       _ptr = Pointer[A]
     end
 
-  new from_cpointer(ptr: Pointer[A], len: USize, alloc: USize = 0) =>
+  new from_cpointer(ptr: Pointer[A] tag, len: USize, alloc: USize = 0) =>
     """
     Create an array from a C-style pointer and length. The contents are not
     copied.
@@ -135,6 +135,18 @@ class Array[A] is Seq[A]
     end
 
     _ptr = ptr
+
+  new copy_cpointer(ptr: Pointer[U8] tag, len: USize) =>
+    if ptr.is_null() then
+      _size = 0
+      _alloc = 0
+      _ptr = Pointer[U8]._alloc(_alloc)
+    else
+      _size = len
+      _alloc = _size
+      _ptr = Pointer[U8]._alloc(_alloc)
+      ptr._copy_to(_ptr, _alloc)
+    end
 
   fun _copy_to(
     ptr: Pointer[this->A!],
@@ -151,6 +163,9 @@ class Array[A] is Seq[A]
     """
     Return the underlying C-style pointer.
     """
+    _ptr._offset(offset)
+
+  fun _cpointer(offset: USize = 0): Pointer[A] =>
     _ptr._offset(offset)
 
   fun size(): USize =>
@@ -361,7 +376,7 @@ class Array[A] is Seq[A]
       error
     end
 
-  fun ref delete(i: USize): A^ ? =>
+  fun ref delete(i: USize, len: USize = 1): A^ ? =>
     """
     Delete an element from the array. Elements after this are moved down by one
     index, compacting the array.
@@ -369,8 +384,9 @@ class Array[A] is Seq[A]
     The deleted element is returned.
     """
     if i < _size then
-      _size = _size - 1
-      _ptr._offset(i)._delete(1, _size - i)
+      let n = len.min(_size - i)
+      _size = _size - n
+      _ptr._offset(i)._delete(n, _size - i)
     else
       error
     end
