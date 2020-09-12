@@ -121,7 +121,7 @@ class Array[A] is Seq[A]
       _ptr = Pointer[A]
     end
 
-  new from_cpointer(ptr: Pointer[A] tag, len: USize, alloc: USize = 0) =>
+  new from_cpointer(ptr: Pointer[A], len: USize, alloc: USize = 0) =>
     """
     Create an array from a C-style pointer and length. The contents are not
     copied.
@@ -135,18 +135,6 @@ class Array[A] is Seq[A]
     end
 
     _ptr = ptr
-
-  new copy_cpointer(ptr: Pointer[U8] tag, len: USize) =>
-    if ptr.is_null() then
-      _size = 0
-      _alloc = 0
-      _ptr = Pointer[U8]._alloc(_alloc)
-    else
-      _size = len
-      _alloc = _size
-      _ptr = Pointer[U8]._alloc(_alloc)
-      ptr._copy_to(_ptr, _alloc)
-    end
 
   fun _copy_to(
     ptr: Pointer[this->A!],
@@ -165,14 +153,17 @@ class Array[A] is Seq[A]
     """
     _ptr._offset(offset)
 
-  fun _cpointer(offset: USize = 0): Pointer[A] =>
-    _ptr._offset(offset)
+  fun _cpointer_unsafe(offset: USize = 0): Pointer[A] =>
+    _ptr._unsafe()._offset(offset)
 
   fun size(): USize =>
     """
     The number of elements in the array.
     """
     _size
+
+  fun ref _set_size_unsafe(size': USize) =>
+    _size = size'
 
   fun space(): USize =>
     """
@@ -220,6 +211,12 @@ class Array[A] is Seq[A]
     """
     reserve(len)
     _size = len
+
+  fun box _read_u8[B: (A & Real[B] val & U8) = A](offset: USize): U8 =>
+    """
+    Reads a U8 from offset. This is only allowed for an array of U8s.
+    """
+    _ptr._offset(offset)._convert[U8]()._apply(0)
 
   fun box read_u8[B: (A & Real[B] val & U8) = A](offset: USize): U8 ? =>
     """
@@ -285,6 +282,9 @@ class Array[A] is Seq[A]
       error
     end
 
+  fun ref _update_u8[B: (A & Real[B] val & U8) = A](offset: USize, value: U8): U8 =>
+    _ptr._offset(offset)._convert[U8]()._update(0, value)
+
   fun ref update_u8[B: (A & Real[B] val & U8) = A](offset: USize, value: U8): U8 ? =>
     """
     Write a U8 at offset. This is only allowed for an array of U8s.
@@ -348,6 +348,12 @@ class Array[A] is Seq[A]
     else
       error
     end
+
+  fun ref _insert_u8[B: (A & Real[B] val & U8) = A](i: USize, value: U8) =>
+    reserve(_size + 1)
+    _ptr._offset(i)._insert(1, _size - i)
+    _ptr._offset(i)._convert[U8]()._update(0, value)
+    _size = _size + 1
 
   fun ref insert(i: USize, value: A) ? =>
     """
