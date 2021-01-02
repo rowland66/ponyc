@@ -13,6 +13,10 @@ add_executable(libponyrt.tests
     mem/pool.cc
 )
 
+add_library(libbacktrace STATIC IMPORTED)
+
+set_target_properties( libbacktrace PROPERTIES IMPORTED_LOCATION /usr/local/lib/libbacktrace.a )
+
 target_include_directories(libponyrt.tests
     PRIVATE ../../src/common
     PRIVATE ../../src/libponyrt
@@ -22,6 +26,7 @@ target_include_directories(libponyrt.tests
 target_link_libraries(libponyrt.tests
     PRIVATE libponyrt
     PRIVATE GTest::gtest
+    PRIVATE libbacktrace
 )
 
 if (MSVC)

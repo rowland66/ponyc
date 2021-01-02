@@ -677,6 +677,8 @@ LLVMValueRef gen_try(compile_t* c, ast_t* ast)
 
   if(else_value != GEN_NOVALUE)
   {
+    gencall_error_cleanup(c);
+
     if(needed)
     {
       ast_t* else_type = deferred_reify(reify, ast_type(else_clause), c->opt);
@@ -729,7 +731,24 @@ LLVMValueRef gen_error(compile_t* c, ast_t* ast)
 
   codegen_scope_lifetime_end(c);
   codegen_debugloc(c, ast);
-  gencall_error(c);
+
+  LLVMValueRef value = NULL;
+  if (ast_childcount(ast) > 0) {
+    ast_t* seq = ast_child(ast);
+    if (ast_id(seq) == TK_SEQ) {
+      ast_t* string = ast_child(seq);
+      if (ast_id(string) == TK_STRING) {
+        const char* name = ast_name(string);
+        size_t len = ast_name_len(string);
+        value = codegen_string(c, name, len);
+      }
+    }
+  }
+  if (value == NULL) {
+    value = codegen_string(c, "Unlabeled", 9);
+  }
+
+  gencall_error(c, value);
   codegen_debugloc(c, NULL);
 
   return GEN_NOVALUE;

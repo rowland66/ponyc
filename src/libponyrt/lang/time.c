@@ -97,7 +97,7 @@ void format_invalid_parameter_handler(const wchar_t* expression,
   (void) p_reserved;
 
   // Throw a pony error
-  pony_error();
+  pony_error("Time format invalid parameter");
 }
 
 PONY_API char* ponyint_formattime(date_t* date, const char* fmt)

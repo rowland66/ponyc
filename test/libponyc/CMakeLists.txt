@@ -75,6 +75,10 @@ target_compile_definitions(libponyc.tests
     PRIVATE PONY_PACKAGES_DIR="${PONY_PACKAGES_DIR}"
 )
 
+add_library(libbacktrace STATIC IMPORTED)
+
+set_target_properties( libbacktrace PROPERTIES IMPORTED_LOCATION /usr/local/lib/libbacktrace.a )
+
 target_link_directories(libponyc.tests
     PRIVATE ../../build/libs/lib
 )
@@ -106,6 +110,7 @@ else()
             libponyc
             blake2
             GTest::gtest
+	    libbacktrace
         )
     else()
         target_link_libraries(libponyc.tests PRIVATE
@@ -115,6 +120,7 @@ else()
             libponyc
             blake2
             GTest::gtest
+	    libbacktrace
         )
     endif()
 

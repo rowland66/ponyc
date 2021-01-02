@@ -1388,16 +1388,26 @@ LLVMValueRef gencall_allocstruct(compile_t* c, reach_type_t* t)
   return result;
 }
 
-void gencall_error(compile_t* c)
+void gencall_error(compile_t* c, LLVMValueRef msg)
 {
   LLVMValueRef func = LLVMGetNamedFunction(c->module, "pony_error");
+
+  if(c->frame->invoke_target != NULL)
+    invoke_fun(c, func, &msg, 1, "", false);
+  else
+    LLVMBuildCall(c->builder, func, &msg, 1, "");
+
+  LLVMBuildUnreachable(c->builder);
+}
+
+void gencall_error_cleanup(compile_t* c)
+{
+  LLVMValueRef func = LLVMGetNamedFunction(c->module, "pony_error_cleanup");
 
   if(c->frame->invoke_target != NULL)
     invoke_fun(c, func, NULL, 0, "", false);
   else
     LLVMBuildCall(c->builder, func, NULL, 0, "");
-
-  LLVMBuildUnreachable(c->builder);
 }
 
 void gencall_memcpy(compile_t* c, LLVMValueRef dst, LLVMValueRef src,

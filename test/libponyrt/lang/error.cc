@@ -8,7 +8,7 @@
 TEST(ErrorTest, PonyTry)
 {
   auto cb_success = [](void*){};
-  auto cb_error = [](void*){ pony_error(); };
+  auto cb_error = [](void*){ pony_error("Test error"); };
 
   ASSERT_TRUE(pony_try(cb_success, nullptr));
   ASSERT_FALSE(pony_try(cb_error, nullptr));

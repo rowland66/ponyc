@@ -1383,7 +1383,7 @@ ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
     case TK_RETURN:
     case TK_BREAK:      r = syntax_return(options, ast, 1); break;
     case TK_CONTINUE:
-    case TK_ERROR:      r = syntax_return(options, ast, 0); break;
+    case TK_ERROR:      r = syntax_return(options, ast, 1); break; // A String allowed after error
     case TK_LET:
     case TK_VAR:        r = syntax_local(options, ast); break;
     case TK_EMBED:      r = syntax_embed(options, ast); break;

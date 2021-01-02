@@ -398,7 +398,7 @@ static bool link_exe(compile_t* c, ast_t* program,
     // On OpenBSD, the unwind symbols are contained within libc++abi.
     "%s %s%s %s %s -lpthread %s %s %s -lm -lc++abi %s %s %s",
 #else
-    "%s %s%s %s %s -lpthread %s %s %s -lm %s %s %s",
+    "%s %s%s %s %s -lpthread %s %s %s -lm %s %s -lbacktrace %s",
 #endif
     linker, file_exe, arch, mcx16_arg, staticbin, fuseld, fuseldcmd, file_o,
     lib_args, dtrace_args, ponyrt, ldl, lexecinfo, atomic, sanitizer_arg

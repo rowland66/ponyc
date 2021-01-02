@@ -953,7 +953,7 @@ PONY_API size_t pony_os_writev(asio_event_t* ev, const struct iovec *iov, int io
     if(errno == EWOULDBLOCK || errno == EAGAIN)
       return 0;
 
-    pony_error();
+    pony_error("Socket writev");
   }
 
   return (size_t)sent;
@@ -975,7 +975,7 @@ PONY_API size_t pony_os_send(asio_event_t* ev, const char* buf, size_t len)
     if(errno == EWOULDBLOCK || errno == EAGAIN)
       return 0;
 
-    pony_error();
+    pony_error("Socket send");
   }
 
   return (size_t)sent;
@@ -997,9 +997,9 @@ PONY_API size_t pony_os_recv(asio_event_t* ev, char* buf, size_t len)
     if(errno == EWOULDBLOCK || errno == EAGAIN)
       return 0;
 
-    pony_error();
+    pony_error("Socket receive");
   } else if(received == 0) {
-    pony_error();
+    pony_error("Socket receive");
   }
 
   return (size_t)received;
@@ -1018,7 +1018,7 @@ PONY_API size_t pony_os_sendto(int fd, const char* buf, size_t len,
   socklen_t addrlen = ponyint_address_length(ipaddr);
 
   if(addrlen == (socklen_t)-1)
-    pony_error();
+    pony_error("Socket sendto address length");
 
   ssize_t sent = sendto(fd, buf, len, 0, (struct sockaddr*)&ipaddr->addr,
     addrlen);
@@ -1028,7 +1028,7 @@ PONY_API size_t pony_os_sendto(int fd, const char* buf, size_t len,
     if(errno == EWOULDBLOCK || errno == EAGAIN)
       return 0;
 
-    pony_error();
+    pony_error("Socket sendto would block");
   }
 
   return (size_t)sent;
@@ -1054,9 +1054,9 @@ PONY_API size_t pony_os_recvfrom(asio_event_t* ev, char* buf, size_t len,
     if(errno == EWOULDBLOCK || errno == EAGAIN)
       return 0;
 
-    pony_error();
+    pony_error("Socket recvfrom would block");
   } else if(recvd == 0) {
-    pony_error();
+    pony_error("Socket recvfrom 0 bytes");
   }
 
   return (size_t)recvd;

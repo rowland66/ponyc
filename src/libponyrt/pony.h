@@ -558,7 +558,7 @@ PONY_API bool pony_try(pony_partial_fn callback, void* data);
  * If pony_error() is called and neither pony_try() nor a try block exist higher
  * in the call stack, the runtime calls the C abort() function.
  */
-PONY_API void pony_error();
+PONY_API void pony_error(char const *msg);
 
 #if defined(__cplusplus)
 }
